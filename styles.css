@@ -336,62 +336,276 @@ header h1 {
 }
 
 /* ========== TELA WELCOME ========== */
+/* ========== TELA WELCOME ========== */
 .welcome-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--space-md);
-  padding: var(--space-lg) var(--space-sm);
+  gap: var(--space-xl);
+  padding: var(--space-2xl) var(--space-sm);
 }
 
+/* AVATAR GRANDE E CENTRALIZADO - SEM BORDA VERMELHA */
 .avatar {
-  width: 120px;
-  height: 120px;
+  width: 180px;
+  height: 180px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid var(--primary);
-  box-shadow: var(--shadow-lg);
-  margin: 15px auto;
+  box-shadow: var(--shadow-xl);
+  margin: 0 auto 30px;
   display: block;
+  transition: all var(--transition-normal);
+  position: relative;
+  background: linear-gradient(135deg, 
+    rgba(176, 0, 0, 0.05) 0%, 
+    rgba(176, 0, 0, 0.02) 50%, 
+    rgba(176, 0, 0, 0.05) 100%);
+}
+
+/* Efeito sutil no hover */
+.avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 35px rgba(176, 0, 0, 0.15);
+}
+
+/* Para quando a imagem não carrega - fallback com ícone */
+.avatar[onerror] + .avatar-fallback,
+.avatar-fallback {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  margin: 0 auto 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 70px;
+  color: var(--primary);
+  box-shadow: var(--shadow-xl);
+  transition: all var(--transition-normal);
+  background: linear-gradient(135deg, 
+    rgba(176, 0, 0, 0.05) 0%, 
+    rgba(176, 0, 0, 0.02) 50%, 
+    rgba(176, 0, 0, 0.05) 100%);
+}
+
+.avatar-fallback:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 35px rgba(176, 0, 0, 0.15);
+  color: var(--primary-dark);
 }
 
 .welcome-text {
-  max-width: 100%;
+  max-width: 600px;
+  width: 100%;
 }
 
 .welcome-text h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-bottom: var(--space-md);
-  font-size: 18px;
+  gap: 10px;
+  margin-bottom: var(--space-lg);
+  font-size: 22px;
+  color: var(--secondary);
+}
+
+.welcome-text p {
+  font-size: 16px;
+  color: var(--gray-dark);
+  margin-bottom: var(--space-lg);
+  line-height: 1.6;
 }
 
 .alert-card {
-  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  background: linear-gradient(135deg, rgba(255, 243, 205, 0.9), rgba(255, 234, 167, 0.9));
   border-left: 4px solid var(--warning);
-  border-radius: var(--radius-md);
-  padding: var(--space-sm);
-  margin: var(--space-md) 0;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin: var(--space-xl) 0;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  box-shadow: var(--shadow-sm);
+  gap: 12px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(243, 156, 18, 0.1);
 }
 
 .alert-icon {
   color: var(--warning-dark);
-  font-size: 16px;
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .alert-content {
   flex: 1;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
+.alert-content strong {
+  color: var(--warning-dark);
+}
+
+/* Botão de entrada maior e mais destacado */
+.btn-large {
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: var(--space-lg);
+  box-shadow: 0 4px 15px rgba(176, 0, 0, 0.2);
+}
+
+.btn-large:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(176, 0, 0, 0.3);
+}
+
+/* ========== MODO ESCURO ========== */
+body.dark .welcome-text h2 {
+  color: #e0e0e0;
+}
+
+body.dark .welcome-text p {
+  color: #b0b0b0;
+}
+
+body.dark .avatar {
+  background: linear-gradient(135deg, 
+    rgba(255, 82, 82, 0.08) 0%, 
+    rgba(255, 82, 82, 0.03) 50%, 
+    rgba(255, 82, 82, 0.08) 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .avatar:hover {
+  box-shadow: 0 15px 35px rgba(176, 0, 0, 0.2);
+}
+
+body.dark .avatar-fallback {
+  background: linear-gradient(135deg, 
+    rgba(255, 82, 82, 0.08) 0%, 
+    rgba(255, 82, 82, 0.03) 50%, 
+    rgba(255, 82, 82, 0.08) 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  color: var(--primary-light);
+}
+
+body.dark .avatar-fallback:hover {
+  color: #ff5252;
+  box-shadow: 0 15px 35px rgba(176, 0, 0, 0.2);
+}
+
+body.dark .alert-card {
+  background: linear-gradient(135deg, rgba(61, 61, 90, 0.9), rgba(77, 77, 106, 0.9));
+  border-left: 4px solid var(--warning);
+  border-color: rgba(243, 156, 18, 0.3);
+}
+
+body.dark .alert-content strong {
+  color: #ffc107;
+}
+
+/* ========== RESPONSIVIDADE ========== */
+@media (max-width: 768px) {
+  .welcome-content {
+    gap: var(--space-lg);
+    padding: var(--space-xl) var(--space-sm);
+  }
+  
+  .avatar,
+  .avatar-fallback {
+    width: 150px;
+    height: 150px;
+    font-size: 60px;
+    margin-bottom: 25px;
+  }
+  
+  .welcome-text h2 {
+    font-size: 20px;
+    gap: 8px;
+  }
+  
+  .alert-card {
+    padding: var(--space-md);
+  }
+  
+  .btn-large {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-content {
+    gap: var(--space-md);
+    padding: var(--space-lg) var(--space-sm);
+  }
+  
+  .avatar,
+  .avatar-fallback {
+    width: 130px;
+    height: 130px;
+    font-size: 50px;
+    margin-bottom: 20px;
+  }
+  
+  .welcome-text h2 {
+    font-size: 18px;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .welcome-text h2 i {
+    font-size: 24px;
+  }
+  
+  .alert-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .alert-content {
+    text-align: center;
+  }
+  
+  .btn-large {
+    padding: 12px 24px;
+    font-size: 14px;
+    width: 100%;
+  }
+}
+
+/* ========== ANIMAÇÃO SUAVE PARA O AVATAR ========== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.avatar,
+.avatar-fallback {
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.welcome-text {
+  animation: fadeInUp 0.6s ease-out 0.4s both;
+}
+
+.alert-card {
+  animation: fadeInUp 0.6s ease-out 0.6s both;
+}
+
+.btn-large {
+  animation: fadeInUp 0.6s ease-out 0.8s both;
+}
 /* ========== PERFIS ========== */
 .section-header {
   text-align: center;
