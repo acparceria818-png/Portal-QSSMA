@@ -1,1 +1,19 @@
-
+{
+  "name": "Portal QSSMA",
+  "short_name": "QSSMA",
+  "description": "Portal de Segurança, Saúde e Meio Ambiente",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#b00000",
+  "orientation": "portrait",
+  "categories": ["business", "productivity", "safety"],
+  "icons": [
+    { "src": "assets/logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "assets/logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
+  ],
+  "permissions": [
+    "notifications",
+    "geolocation"
+  ]
+}
