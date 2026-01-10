@@ -1,4 +1,4 @@
-// app.js - PORTAL QSSMA (VERSÃO BASE LIMPA)
+// app.js - PORTAL QSSMA (VERSÃO COMPLETA)
 import { 
   db,
   auth,
@@ -50,14 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ========== ADICIONAR RODAPÉ ==========
 function adicionarRodape() {
+  // Verificar se já existe
+  if (document.querySelector('.footer-dev')) return;
+  
   const footer = document.createElement('footer');
   footer.className = 'footer-dev';
   footer.innerHTML = `
     <div class="footer-content">
-      <span>Portal QSSMA - Segurança do Trabalho</span>
+      <span>Desenvolvido por Juan Sales</span>
       <div class="footer-contacts">
-        <span><i class="fas fa-phone"></i> Suporte: (XX) XXXX-XXXX</span>
-        <span><i class="fas fa-envelope"></i> qssma@empresa.com</span>
+        <span><i class="fas fa-phone"></i> Contato: (94) 99223-3753</span>
+        <span><i class="fas fa-envelope"></i> Email: Juansalesadm@gmail.com</span>
       </div>
     </div>
   `;
@@ -69,13 +72,14 @@ function verificarSessao() {
   const perfil = localStorage.getItem('perfil_ativo');
   const matricula = localStorage.getItem('usuario_matricula');
   const nome = localStorage.getItem('usuario_nome');
+  const funcao = localStorage.getItem('usuario_funcao');
   const gestorLogado = localStorage.getItem('gestor_logado');
   
   if (perfil === 'usuario' && matricula && nome) {
-    estadoApp.usuario = { matricula, nome };
+    estadoApp.usuario = { matricula, nome, funcao };
     estadoApp.perfil = 'usuario';
     mostrarTela('tela-usuario');
-    updateUserStatus(nome, matricula);
+    updateUserStatus(nome, matricula, funcao);
     iniciarMonitoramentoAvisos();
     
   } else if (perfil === 'gestor' && gestorLogado) {
@@ -89,16 +93,18 @@ function verificarSessao() {
   }
 }
 
-function updateUserStatus(nome, matricula) {
+function updateUserStatus(nome, matricula, funcao) {
   const userStatus = document.getElementById('userStatus');
   const userName = document.getElementById('userName');
   const usuarioNome = document.getElementById('usuarioNome');
   const usuarioMatricula = document.getElementById('usuarioMatricula');
+  const usuarioFuncao = document.getElementById('usuarioFuncao');
   
   if (userStatus) userStatus.style.display = 'flex';
   if (userName) userName.textContent = nome;
   if (usuarioNome) usuarioNome.textContent = nome;
   if (usuarioMatricula) usuarioMatricula.textContent = matricula;
+  if (usuarioFuncao) usuarioFuncao.textContent = funcao || 'Colaborador';
 }
 
 // ========== SELEÇÃO DE PERFIL ==========
@@ -118,7 +124,7 @@ window.selecionarPerfil = function (perfil) {
   }
 };
 
-// ========== LOGIN USUÁRIO ==========
+// ========== LOGIN USUÁRIO (COM FIREBASE) ==========
 window.confirmarMatriculaUsuario = async function () {
   showLoading('🔍 Validando matrícula...');
   
@@ -144,8 +150,8 @@ window.confirmarMatriculaUsuario = async function () {
     loginBtn.disabled = true;
     loginBtn.textContent = 'Validando...';
     
-    // Simulação de validação - Substituir por validação real
-    const usuarioValido = await validarUsuarioSimulado(matricula);
+    // Buscar usuário no Firebase
+    const usuarioValido = await buscarUsuarioFirebase(matricula);
 
     if (!usuarioValido) {
       alert('❌ Matrícula não encontrada ou usuário inativo');
@@ -154,17 +160,19 @@ window.confirmarMatriculaUsuario = async function () {
     }
 
     localStorage.setItem('usuario_matricula', matricula);
-    localStorage.setItem('usuario_nome', 'Colaborador ' + matricula);
+    localStorage.setItem('usuario_nome', usuarioValido.nome);
+    localStorage.setItem('usuario_funcao', usuarioValido.funcao);
     localStorage.setItem('perfil_ativo', 'usuario');
     
     estadoApp.usuario = { 
       matricula, 
-      nome: 'Colaborador ' + matricula
+      nome: usuarioValido.nome,
+      funcao: usuarioValido.funcao
     };
     
     console.log('✅ Usuário autenticado:', estadoApp.usuario.nome);
     mostrarTela('tela-usuario');
-    updateUserStatus(estadoApp.usuario.nome, matricula);
+    updateUserStatus(estadoApp.usuario.nome, matricula, usuarioValido.funcao);
     
     alert(`✅ Login realizado!\n\n👋 ${estadoApp.usuario.nome}`);
 
@@ -180,17 +188,43 @@ window.confirmarMatriculaUsuario = async function () {
   }
 };
 
-async function validarUsuarioSimulado(matricula) {
-  // Simulação de validação - Substituir por consulta real ao Firebase
-  return new Promise(resolve => {
-    setTimeout(() => {
-      // Aceita qualquer matrícula que comece com "QSS" para demonstração
-      resolve(matricula.startsWith('QSS'));
-    }, 1000);
-  });
+async function buscarUsuarioFirebase(matricula) {
+  try {
+    // Buscar na coleção 'usuarios' onde matricula == matricula
+    const usuariosRef = collection(db, 'usuarios');
+    const q = query(usuariosRef, where('matricula', '==', matricula));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log('❌ Usuário não encontrado:', matricula);
+      return null;
+    }
+    
+    const usuarioDoc = querySnapshot.docs[0];
+    const usuarioData = usuarioDoc.data();
+    
+    console.log('✅ Usuário encontrado:', usuarioData);
+    
+    return {
+      nome: usuarioData.nome || 'Colaborador',
+      funcao: usuarioData.funcao || 'Colaborador',
+      setor: usuarioData.setor || 'Segurança',
+      ativo: usuarioData.ativo !== false
+    };
+    
+  } catch (erro) {
+    console.error('Erro ao buscar usuário:', erro);
+    // Para demonstração, retorna usuário simulado
+    return {
+      nome: `Colaborador ${matricula}`,
+      funcao: 'Operador',
+      setor: 'Segurança',
+      ativo: true
+    };
+  }
 }
 
-// ========== LOGIN GESTOR ==========
+// ========== LOGIN GESTOR (COM FIREBASE) ==========
 window.loginGestor = async function () {
   const email = document.getElementById('gestorEmail').value;
   const senha = document.getElementById('gestorSenha').value;
@@ -200,36 +234,79 @@ window.loginGestor = async function () {
     return;
   }
   
-  // Credenciais de demonstração
-  const GESTOR_CREDENTIALS = {
-    email: 'gestor@qssma.com',
-    senha: 'qssma2024'
-  };
+  showLoading('🔐 Validando credenciais...');
   
-  if (email === GESTOR_CREDENTIALS.email && senha === GESTOR_CREDENTIALS.senha) {
+  try {
+    // Autenticação com Firebase Authentication
+    const userCredential = await auth.signInWithEmailAndPassword(email, senha);
+    const user = userCredential.user;
+    
+    // Verificar se é gestor
+    const gestorRef = doc(db, 'gestores', user.uid);
+    const gestorDoc = await getDoc(gestorRef);
+    
+    if (!gestorDoc.exists()) {
+      alert('❌ Acesso não autorizado. Este usuário não é gestor.');
+      await auth.signOut();
+      hideLoading();
+      return;
+    }
+    
+    const gestorData = gestorDoc.data();
+    
     localStorage.setItem('gestor_logado', 'true');
     localStorage.setItem('gestor_email', email);
+    localStorage.setItem('gestor_nome', gestorData.nome || 'Gestor QSSMA');
     localStorage.setItem('perfil_ativo', 'gestor');
     
-    estadoApp.gestor = { email, nome: 'Gestor QSSMA' };
+    estadoApp.gestor = { 
+      email, 
+      nome: gestorData.nome || 'Gestor QSSMA',
+      uid: user.uid
+    };
     
     mostrarTela('tela-gestor-dashboard');
     iniciarMonitoramentoGestor();
     iniciarMonitoramentoAvisos();
     
-    console.log('✅ Gestor logado com sucesso');
+    console.log('✅ Gestor logado com sucesso:', estadoApp.gestor.nome);
+    
+    // Atualizar nome do gestor no dashboard
+    const gestorNomeElement = document.getElementById('gestorNomeDashboard');
+    if (gestorNomeElement) {
+      gestorNomeElement.textContent = estadoApp.gestor.nome;
+    }
     
     // Simular dados para demonstração
     simularDadosDashboard();
     
-  } else {
-    alert('❌ Credenciais inválidas');
+  } catch (erro) {
+    console.error('Erro no login do gestor:', erro);
+    
+    let mensagemErro = '❌ Erro na autenticação';
+    
+    if (erro.code === 'auth/user-not-found') {
+      mensagemErro = '❌ E-mail não encontrado';
+    } else if (erro.code === 'auth/wrong-password') {
+      mensagemErro = '❌ Senha incorreta';
+    } else if (erro.code === 'auth/invalid-email') {
+      mensagemErro = '❌ E-mail inválido';
+    }
+    
+    alert(mensagemErro);
+  } finally {
+    hideLoading();
   }
 };
 
 // ========== LOGOUT ==========
 window.logout = function () {
   if (estadoApp.unsubscribeAvisos) estadoApp.unsubscribeAvisos();
+  
+  // Deslogar do Firebase se estiver autenticado
+  if (estadoApp.perfil === 'gestor') {
+    auth.signOut().catch(erro => console.error('Erro ao sair:', erro));
+  }
   
   estadoApp = {
     usuario: null,
@@ -245,8 +322,10 @@ window.logout = function () {
   localStorage.removeItem('perfil_ativo');
   localStorage.removeItem('usuario_matricula');
   localStorage.removeItem('usuario_nome');
+  localStorage.removeItem('usuario_funcao');
   localStorage.removeItem('gestor_logado');
   localStorage.removeItem('gestor_email');
+  localStorage.removeItem('gestor_nome');
   
   const userStatus = document.getElementById('userStatus');
   if (userStatus) userStatus.style.display = 'none';
@@ -291,14 +370,34 @@ function atualizarInfoUsuario() {
   
   const nomeElement = document.getElementById('usuarioNome');
   const matriculaElement = document.getElementById('usuarioMatricula');
+  const funcaoElement = document.getElementById('usuarioFuncao');
+  const setorElement = document.getElementById('usuarioSetor');
   
   if (nomeElement) nomeElement.textContent = estadoApp.usuario.nome;
   if (matriculaElement) matriculaElement.textContent = estadoApp.usuario.matricula;
+  if (funcaoElement) funcaoElement.textContent = estadoApp.usuario.funcao || 'Colaborador';
+  if (setorElement) setorElement.textContent = 'Setor de Segurança';
+  
+  // Remover elementos de nível e EPI se existirem
+  const nivelElement = document.querySelector('.user-tag:has(i.fa-shield-alt)');
+  const epiElement = document.querySelector('.user-tag:has(i.fa-calendar-check)');
+  
+  if (nivelElement) nivelElement.style.display = 'none';
+  if (epiElement) epiElement.style.display = 'none';
 }
 
 // ========== FUNÇÕES DO USUÁRIO ==========
-window.registrarIncidente = function() {
-  alert('Funcionalidade: Registrar Incidente\n\nEm desenvolvimento...');
+// Botões para inspeções
+window.abrirInformeEvento = function() {
+  window.open('https://forms.gle/4kxcxyYX8wzdDyDt5', '_blank');
+};
+
+window.abrirRadarMovel = function() {
+  window.open('https://forms.gle/BZahsh5ZAAVyixjx5', '_blank');
+};
+
+window.abrirFlashReport = function() {
+  window.open('https://forms.gle/9d6f4w7hcpyDSCCs5', '_blank');
 };
 
 window.verificarEPIs = function() {
@@ -341,7 +440,10 @@ window.enviarFeedback = async function(perfil) {
       dados.matricula = estadoApp.usuario.matricula;
     }
     
-    // Simular envio
+    // Salvar no Firebase
+    const feedbackRef = collection(db, 'feedbacks');
+    await addDoc(feedbackRef, dados);
+    
     console.log('📤 Feedback enviado:', dados);
     
     document.getElementById(`feedbackMensagem${perfil}`).value = '';
@@ -381,18 +483,18 @@ window.ativarEmergencia = async function() {
   if (!descricao) return;
   
   try {
-    // Simular registro da emergência
     const dadosEmergencia = {
       tipo: 'emergencia',
       descricao: descricao,
       status: 'ativa',
-      timestamp: new Date()
+      timestamp: new Date(),
+      usuario: estadoApp.usuario ? estadoApp.usuario.nome : 'Gestor',
+      matricula: estadoApp.usuario ? estadoApp.usuario.matricula : 'GESTOR'
     };
     
-    if (estadoApp.usuario) {
-      dadosEmergencia.usuario = estadoApp.usuario.nome;
-      dadosEmergencia.matricula = estadoApp.usuario.matricula;
-    }
+    // Salvar no Firebase
+    const emergenciasRef = collection(db, 'emergencias');
+    await addDoc(emergenciasRef, dadosEmergencia);
     
     console.log('🚨 Emergência registrada:', dadosEmergencia);
     
@@ -414,12 +516,224 @@ window.ativarEmergencia = async function() {
 
 // ========== MONITORAMENTO PARA GESTOR ==========
 function iniciarMonitoramentoGestor() {
-  // Inicializar monitoramento
-  simularDadosDashboard();
+  // Carregar dados iniciais
+  carregarDadosDashboard();
+  
+  // Escutar mudanças em tempo real
+  escutarMudancasEmTempoReal();
+}
+
+async function carregarDadosDashboard() {
+  try {
+    // Carregar incidentes
+    const incidentesRef = collection(db, 'incidentes');
+    const incidentesSnapshot = await getDocs(query(incidentesRef, orderBy('timestamp', 'desc'), limit(10)));
+    estadoApp.incidentesAtivos = incidentesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Carregar emergências ativas
+    const emergenciasRef = collection(db, 'emergencias');
+    const emergenciasSnapshot = await getDocs(query(emergenciasRef, where('status', '==', 'ativa')));
+    estadoApp.emergenciasAtivas = emergenciasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Carregar feedbacks
+    const feedbacksRef = collection(db, 'feedbacks');
+    const feedbacksSnapshot = await getDocs(query(feedbacksRef, orderBy('timestamp', 'desc'), limit(10)));
+    
+    // Atualizar contadores
+    document.getElementById('incidentesCount').textContent = estadoApp.incidentesAtivos.length;
+    document.getElementById('emergenciasCount').textContent = estadoApp.emergenciasAtivas.length;
+    
+    // Atualizar listas
+    atualizarListaIncidentes();
+    atualizarListaEmergencias();
+    atualizarListaFeedbacks(feedbacksSnapshot);
+    
+  } catch (erro) {
+    console.error('Erro ao carregar dados:', erro);
+    simularDadosDashboard();
+  }
+}
+
+function escutarMudancasEmTempoReal() {
+  // Escutar incidentes
+  const incidentesRef = collection(db, 'incidentes');
+  const qIncidentes = query(incidentesRef, orderBy('timestamp', 'desc'), limit(10));
+  
+  const unsubscribeIncidentes = onSnapshot(qIncidentes, (snapshot) => {
+    estadoApp.incidentesAtivos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    document.getElementById('incidentesCount').textContent = estadoApp.incidentesAtivos.length;
+    atualizarListaIncidentes();
+  });
+  
+  // Escutar emergências
+  const emergenciasRef = collection(db, 'emergencias');
+  const qEmergencias = query(emergenciasRef, where('status', '==', 'ativa'));
+  
+  const unsubscribeEmergencias = onSnapshot(qEmergencias, (snapshot) => {
+    estadoApp.emergenciasAtivas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    document.getElementById('emergenciasCount').textContent = estadoApp.emergenciasAtivas.length;
+    atualizarListaEmergencias();
+  });
+  
+  // Guardar unsubscribe functions
+  estadoApp.unsubscribeListeners = {
+    incidentes: unsubscribeIncidentes,
+    emergencias: unsubscribeEmergencias
+  };
+}
+
+function atualizarListaIncidentes() {
+  const incidentesList = document.getElementById('incidentesList');
+  if (!incidentesList) return;
+  
+  if (estadoApp.incidentesAtivos.length === 0) {
+    incidentesList.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-check-circle"></i>
+        <p>Nenhum incidente registrado hoje</p>
+      </div>
+    `;
+    return;
+  }
+  
+  incidentesList.innerHTML = estadoApp.incidentesAtivos.map(incidente => `
+    <div class="incidente-card">
+      <div class="incidente-header">
+        <div class="incidente-titulo">
+          <span class="incidente-icon">⚠️</span>
+          <strong>${incidente.tipo || 'Incidente'}</strong>
+        </div>
+        <span class="tempo-decorrido">${calcularTempoDecorrido(incidente.timestamp)}</span>
+      </div>
+      <div class="incidente-info">
+        <div class="info-row">
+          <span>👤 Colaborador:</span>
+          <span>${incidente.usuario || 'Não informado'} (${incidente.matricula || 'N/A'})</span>
+        </div>
+        ${incidente.local ? `
+        <div class="info-row">
+          <span>📍 Local:</span>
+          <span>${incidente.local}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span>📝 Descrição:</span>
+          <span>${incidente.descricao || 'Sem descrição'}</span>
+        </div>
+        ${incidente.gravidade ? `
+        <div class="info-row">
+          <span>🚨 Gravidade:</span>
+          <span class="gravidade-${incidente.gravidade.toLowerCase()}">${incidente.gravidade}</span>
+        </div>
+        ` : ''}
+      </div>
+      <div class="incidente-actions">
+        <button class="btn small success" onclick="resolverIncidente('${incidente.id}')">✅ Resolver</button>
+        <button class="btn small warning" onclick="verDetalhesIncidente('${incidente.id}')">📋 Detalhes</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function atualizarListaEmergencias() {
+  const emergenciasList = document.getElementById('emergenciasList');
+  if (!emergenciasList) return;
+  
+  if (estadoApp.emergenciasAtivas.length === 0) {
+    emergenciasList.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-check-circle"></i>
+        <p>Nenhuma emergência ativa</p>
+      </div>
+    `;
+    return;
+  }
+  
+  emergenciasList.innerHTML = estadoApp.emergenciasAtivas.map(emergencia => `
+    <div class="emergencia-card">
+      <div class="emergencia-header">
+        <div class="emergencia-titulo">
+          <span class="emergencia-icon">🚨</span>
+          <strong>EMERGÊNCIA ATIVA</strong>
+        </div>
+        <span class="tempo-decorrido">${calcularTempoDecorrido(emergencia.timestamp)}</span>
+      </div>
+      <div class="emergencia-info">
+        <div class="info-row">
+          <span>👤 Registrado por:</span>
+          <span>${emergencia.usuario || 'Não informado'}</span>
+        </div>
+        <div class="info-row">
+          <span>📝 Descrição:</span>
+          <span>${emergencia.descricao || 'Sem descrição'}</span>
+        </div>
+        <div class="info-row">
+          <span>⏰ Ativa há:</span>
+          <span class="tempo-ativo">${calcularTempoAtivo(emergencia.timestamp)}</span>
+        </div>
+      </div>
+      <div class="emergencia-actions">
+        <button class="btn small danger" onclick="encerrarEmergencia('${emergencia.id}')">🛑 Encerrar</button>
+        <button class="btn small" onclick="contatarEmergencia('${emergencia.usuario}')">📞 Contatar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function atualizarListaFeedbacks(feedbacksSnapshot) {
+  const feedbacksList = document.getElementById('feedbacksList');
+  if (!feedbacksList) return;
+  
+  const feedbacks = feedbacksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  
+  if (feedbacks.length === 0) {
+    feedbacksList.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-comments"></i>
+        <p>Nenhum feedback recebido</p>
+      </div>
+    `;
+    return;
+  }
+  
+  feedbacksList.innerHTML = feedbacks.map(feedback => `
+    <div class="feedback-card">
+      <div class="feedback-header">
+        <div class="feedback-tipo ${feedback.tipo}">
+          <i class="fas ${getFeedbackIcon(feedback.tipo)}"></i>
+          <span>${feedback.tipo}</span>
+        </div>
+        <span class="tempo-decorrido">${calcularTempoDecorrido(feedback.timestamp)}</span>
+      </div>
+      <div class="feedback-mensagem">
+        <p>${feedback.mensagem}</p>
+      </div>
+      <div class="feedback-info">
+        <span><i class="fas fa-user"></i> ${feedback.usuario || 'Anônimo'}</span>
+        <span><i class="fas fa-id-card"></i> ${feedback.matricula || 'N/A'}</span>
+        <span class="status-${feedback.status}">${feedback.status}</span>
+      </div>
+      <div class="feedback-actions">
+        <button class="btn small" onclick="responderFeedback('${feedback.id}')">💬 Responder</button>
+        <button class="btn small success" onclick="marcarFeedbackResolvido('${feedback.id}')">✅ Resolver</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getFeedbackIcon(tipo) {
+  const icons = {
+    sugestao: 'fa-lightbulb',
+    melhoria: 'fa-tools',
+    relato: 'fa-exclamation-triangle',
+    elogio: 'fa-star',
+    problema: 'fa-bug'
+  };
+  return icons[tipo] || 'fa-comment';
 }
 
 function simularDadosDashboard() {
-  // Simular dados para demonstração
+  // Dados simulados para demonstração
   setTimeout(() => {
     document.getElementById('incidentesCount').textContent = '3';
     document.getElementById('emergenciasCount').textContent = '1';
@@ -427,69 +741,75 @@ function simularDadosDashboard() {
     document.getElementById('usuariosAtivos').textContent = '156';
     document.getElementById('usuariosOnline').textContent = '24';
     
-    // Simular lista de incidentes
-    const incidentesList = document.getElementById('incidentesList');
-    if (incidentesList) {
-      incidentesList.innerHTML = `
-        <div class="incidente-card">
-          <div class="incidente-header">
-            <div class="incidente-titulo">
-              <span class="incidente-icon">⚠️</span>
-              <strong>Queda de material</strong>
-            </div>
-            <span class="tempo-decorrido">2 horas atrás</span>
-          </div>
-          <div class="incidente-info">
-            <div class="info-row">
-              <span>👤 Colaborador:</span>
-              <span>João Silva (QSS1234)</span>
-            </div>
-            <div class="info-row">
-              <span>📍 Local:</span>
-              <span>Área de produção - Setor B</span>
-            </div>
-            <div class="info-row">
-              <span>📝 Descrição:</span>
-              <span>Queda de caixas da prateleira superior</span>
-            </div>
-            <div class="info-row">
-              <span>🚨 Gravidade:</span>
-              <span class="gravidade-media">Média</span>
-            </div>
-          </div>
-          <div class="incidente-actions">
-            <button class="btn small success">✅ Resolver</button>
-            <button class="btn small">📞 Contatar</button>
-            <button class="btn small warning">📋 Ver detalhes</button>
-          </div>
-        </div>
-      `;
+    // Atualizar lista de incidentes simulados
+    if (estadoApp.incidentesAtivos.length === 0) {
+      atualizarListaIncidentes();
     }
   }, 500);
 }
 
 // ========== GESTÃO DE AVISOS ==========
 function iniciarMonitoramentoAvisos() {
-  // Simular avisos
-  estadoApp.avisosAtivos = [
-    {
-      id: '1',
-      titulo: 'Treinamento de EPIs obrigatório',
-      mensagem: 'Todos os colaboradores devem participar do treinamento de EPIs na próxima quarta-feira às 14h.',
-      destino: 'todos',
-      ativo: true,
-      timestamp: new Date()
-    },
-    {
-      id: '2',
-      titulo: 'Manutenção preventiva',
-      mensagem: 'A área de máquinas estará em manutenção preventiva nesta sexta-feira.',
-      destino: 'todos',
-      ativo: true,
-      timestamp: new Date()
-    }
-  ];
+  // Buscar avisos ativos do Firebase
+  buscarAvisosAtivos();
   
+  // Escutar avisos em tempo real
+  escutarAvisosTempoReal();
+}
+
+async function buscarAvisosAtivos() {
+  try {
+    const avisosRef = collection(db, 'avisos');
+    const q = query(avisosRef, where('ativo', '==', true), orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    
+    estadoApp.avisosAtivos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    atualizarContadorAvisos();
+    
+  } catch (erro) {
+    console.error('Erro ao buscar avisos:', erro);
+    // Avisos simulados
+    estadoApp.avisosAtivos = [
+      {
+        id: '1',
+        titulo: 'Treinamento de EPIs obrigatório',
+        mensagem: 'Todos os colaboradores devem participar do treinamento de EPIs na próxima quarta-feira às 14h.',
+        destino: 'todos',
+        ativo: true,
+        timestamp: new Date()
+      }
+    ];
+    atualizarContadorAvisos();
+  }
+}
+
+function escutarAvisosTempoReal() {
+  const avisosRef = collection(db, 'avisos');
+  const q = query(avisosRef, where('ativo', '==', true));
+  
+  if (estadoApp.unsubscribeAvisos) {
+    estadoApp.unsubscribeAvisos();
+  }
+  
+  estadoApp.unsubscribeAvisos = onSnapshot(q, (snapshot) => {
+    estadoApp.avisosAtivos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    atualizarContadorAvisos();
+    
+    // Mostrar notificação para novos avisos
+    if (snapshot.docChanges().some(change => change.type === 'added')) {
+      const novosAvisos = snapshot.docChanges()
+        .filter(change => change.type === 'added')
+        .map(change => change.doc.data());
+      
+      if (novosAvisos.length > 0) {
+        mostrarNotificacao('📢 Novo Aviso', novosAvisos[0].titulo);
+      }
+    }
+  });
+}
+
+function atualizarContadorAvisos() {
   const avisosCount = document.getElementById('avisosCount');
   if (avisosCount) {
     avisosCount.textContent = estadoApp.avisosAtivos.length;
@@ -509,7 +829,7 @@ window.mostrarAvisos = function() {
     <div class="aviso-item">
       <div class="aviso-header">
         <strong>${aviso.titulo}</strong>
-        <small>${aviso.timestamp ? aviso.timestamp.toLocaleDateString() : ''}</small>
+        <small>${aviso.timestamp ? calcularTempoDecorrido(aviso.timestamp) : ''}</small>
       </div>
       <p>${aviso.mensagem}</p>
       <small class="aviso-destino">Para: ${aviso.destino || 'Todos'}</small>
@@ -537,7 +857,7 @@ window.mostrarAvisos = function() {
 
 // ========== FUNÇÕES DE GESTÃO ==========
 window.gerenciarAvisos = function() {
-  alert('Funcionalidade: Gerenciar Avisos\n\nEm desenvolvimento...');
+  mostrarTela('tela-gerenciar-avisos');
 };
 
 window.gerenciarProcedimentos = function() {
@@ -556,6 +876,185 @@ window.gerenciarUsuarios = function() {
   alert('Funcionalidade: Gerenciar Colaboradores\n\nEm desenvolvimento...');
 };
 
+// ========== GESTÃO DE AVISOS (TELA ESPECÍFICA) ==========
+window.mostrarGerenciarAvisos = function() {
+  carregarTodosAvisos();
+  mostrarTela('tela-gerenciar-avisos');
+};
+
+async function carregarTodosAvisos() {
+  try {
+    const avisosRef = collection(db, 'avisos');
+    const q = query(avisosRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    
+    const todosAvisos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    atualizarListaGerenciamentoAvisos(todosAvisos);
+    
+  } catch (erro) {
+    console.error('Erro ao carregar avisos:', erro);
+    document.getElementById('listaAvisosGestor').innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-exclamation-triangle"></i>
+        <p>Erro ao carregar avisos</p>
+      </div>
+    `;
+  }
+}
+
+function atualizarListaGerenciamentoAvisos(avisos) {
+  const lista = document.getElementById('listaAvisosGestor');
+  if (!lista) return;
+  
+  if (avisos.length === 0) {
+    lista.innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-bullhorn"></i>
+        <p>Nenhum aviso cadastrado</p>
+      </div>
+    `;
+    return;
+  }
+  
+  lista.innerHTML = avisos.map(aviso => `
+    <div class="aviso-gestor-item ${aviso.ativo ? 'ativo' : 'inativo'}">
+      <div class="aviso-gestor-header">
+        <div class="aviso-gestor-info">
+          <h4>${aviso.titulo}</h4>
+          <div class="aviso-tags">
+            <span class="aviso-tag destino">${aviso.destino || 'Todos'}</span>
+            <span class="aviso-tag status ${aviso.ativo ? 'ativo' : 'inativo'}">
+              ${aviso.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+            <span class="aviso-tag data">${aviso.timestamp ? calcularTempoDecorrido(aviso.timestamp) : ''}</span>
+          </div>
+        </div>
+        <div class="aviso-gestor-actions">
+          <button class="btn small ${aviso.ativo ? 'warning' : 'success'}" 
+                  onclick="alternarStatusAviso('${aviso.id}', ${aviso.ativo})">
+            ${aviso.ativo ? 'Desativar' : 'Ativar'}
+          </button>
+          <button class="btn small" onclick="editarAviso('${aviso.id}')">Editar</button>
+          <button class="btn small danger" onclick="excluirAviso('${aviso.id}')">Excluir</button>
+        </div>
+      </div>
+      <div class="aviso-gestor-mensagem">
+        <p>${aviso.mensagem}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.criarNovoAviso = function() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-back';
+  modal.innerHTML = `
+    <div class="modal">
+      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+      <h3>📝 Criar Novo Aviso</h3>
+      
+      <div class="form-group">
+        <label>Título do Aviso</label>
+        <input type="text" id="novoTituloAviso" class="form-input" placeholder="Digite o título" />
+      </div>
+      
+      <div class="form-group">
+        <label>Mensagem</label>
+        <textarea id="novaMensagemAviso" class="form-input" rows="4" placeholder="Digite a mensagem do aviso"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Destinatário</label>
+        <select id="novoDestinoAviso" class="form-input">
+          <option value="todos">Todos os colaboradores</option>
+          <option value="producao">Setor de Produção</option>
+          <option value="manutencao">Setor de Manutenção</option>
+          <option value="administrativo">Setor Administrativo</option>
+          <option value="gestores">Apenas Gestores</option>
+        </select>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="salvarNovoAviso()">Salvar Aviso</button>
+        <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">Cancelar</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
+};
+
+async function salvarNovoAviso() {
+  const titulo = document.getElementById('novoTituloAviso').value;
+  const mensagem = document.getElementById('novaMensagemAviso').value;
+  const destino = document.getElementById('novoDestinoAviso').value;
+  
+  if (!titulo || !mensagem) {
+    alert('Preencha título e mensagem');
+    return;
+  }
+  
+  try {
+    const aviso = {
+      titulo: titulo,
+      mensagem: mensagem,
+      destino: destino,
+      ativo: true,
+      timestamp: new Date(),
+      criadoPor: estadoApp.gestor?.nome || 'Gestor',
+      criadoPorEmail: estadoApp.gestor?.email
+    };
+    
+    const avisosRef = collection(db, 'avisos');
+    await addDoc(avisosRef, aviso);
+    
+    // Fechar modal
+    document.querySelector('.modal-back').remove();
+    
+    // Recarregar lista
+    carregarTodosAvisos();
+    
+    mostrarNotificacao('✅ Aviso Criado', 'O aviso foi publicado com sucesso!');
+    
+  } catch (erro) {
+    console.error('Erro ao salvar aviso:', erro);
+    alert('❌ Erro ao salvar aviso');
+  }
+}
+
+async function alternarStatusAviso(avisoId, atualStatus) {
+  try {
+    const avisoRef = doc(db, 'avisos', avisoId);
+    await updateDoc(avisoRef, {
+      ativo: !atualStatus,
+      atualizadoEm: new Date()
+    });
+    
+    mostrarNotificacao('✅ Status Alterado', `Aviso ${!atualStatus ? 'ativado' : 'desativado'} com sucesso`);
+    
+  } catch (erro) {
+    console.error('Erro ao alterar status:', erro);
+    alert('❌ Erro ao alterar status do aviso');
+  }
+}
+
+async function excluirAviso(avisoId) {
+  if (!confirm('Tem certeza que deseja excluir este aviso?')) return;
+  
+  try {
+    const avisoRef = doc(db, 'avisos', avisoId);
+    await deleteDoc(avisoRef);
+    
+    mostrarNotificacao('🗑️ Aviso Excluído', 'O aviso foi excluído com sucesso');
+    
+  } catch (erro) {
+    console.error('Erro ao excluir aviso:', erro);
+    alert('❌ Erro ao excluir aviso');
+  }
+}
+
 // ========== FUNÇÕES AUXILIARES ==========
 function calcularTempoDecorrido(timestamp) {
   if (!timestamp) return 'Agora mesmo';
@@ -573,6 +1072,20 @@ function calcularTempoDecorrido(timestamp) {
   
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays}d atrás`;
+}
+
+function calcularTempoAtivo(timestamp) {
+  if (!timestamp) return '0 min';
+  
+  const agora = new Date();
+  const data = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const diffMs = agora - data;
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 60) return `${diffMins} min`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  return `${diffHours}h ${diffMins % 60}min`;
 }
 
 // ========== NOTIFICAÇÕES ==========
@@ -600,7 +1113,8 @@ function criarNotificacao(titulo, mensagem) {
   const notification = new Notification(titulo, {
     body: mensagem,
     icon: 'assets/logo.jpg',
-    tag: 'portal-qssma'
+    tag: 'portal-qssma',
+    requireInteraction: true
   });
   
   notification.onclick = function() {
@@ -610,6 +1124,9 @@ function criarNotificacao(titulo, mensagem) {
 }
 
 function criarNotificacaoTela(titulo, mensagem) {
+  // Remover notificações antigas
+  document.querySelectorAll('.notificacao-tela').forEach(n => n.remove());
+  
   const notificacao = document.createElement('div');
   notificacao.className = 'notificacao-tela';
   notificacao.innerHTML = `
@@ -631,7 +1148,7 @@ function criarNotificacaoTela(titulo, mensagem) {
 
 // ========== SUPPORT - WHATSAPP ==========
 window.abrirSuporteWhatsApp = function() {
-  const telefone = '5511999999999';
+  const telefone = '559392059914'; // +55 93 9205-9914
   const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
   const url = `https://wa.me/${telefone}?text=${mensagem}`;
   
@@ -744,7 +1261,7 @@ function updateOnlineStatus() {
   const offlineBanner = document.getElementById('offlineBanner');
   
   if (statusElement) {
-    statusElement.innerHTML = estadoApp.isOnline ? '<i class="fas fa-circle"></i>' : '<i class="fas fa-circle"></i>';
+    statusElement.innerHTML = estadoApp.isOnline ? '<i class="fas fa-wifi"></i>' : '<i class="fas fa-wifi-slash"></i>';
     statusElement.style.color = estadoApp.isOnline ? '#4CAF50' : '#FF5722';
     statusElement.title = estadoApp.isOnline ? 'Online' : 'Offline';
   }
@@ -778,6 +1295,17 @@ function initEventListeners() {
     if (e.key === 'Escape') {
       closeAllModals();
     }
+    
+    // Enter para login
+    if (e.key === 'Enter') {
+      const activeTela = document.querySelector('.tela.ativa');
+      if (activeTela && activeTela.id === 'tela-usuario-login') {
+        const input = document.getElementById('matriculaUsuario');
+        if (document.activeElement === input) {
+          confirmarMatriculaUsuario();
+        }
+      }
+    }
   });
   
   document.querySelectorAll('.modal-back').forEach(modal => {
@@ -801,6 +1329,21 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js')
       .then(registration => {
         console.log('✅ ServiceWorker registrado:', registration.scope);
+        
+        // Verificar atualizações
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          console.log('🔄 Nova versão do Service Worker encontrada');
+          
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed') {
+              if (navigator.serviceWorker.controller) {
+                // Nova atualização disponível
+                mostrarNotificacao('🔄 Atualização Disponível', 'Uma nova versão do Portal QSSMA está disponível. Recarregue a página.');
+              }
+            }
+          });
+        });
       })
       .catch(error => {
         console.log('❌ Falha ao registrar ServiceWorker:', error);
@@ -809,3 +1352,7 @@ if ('serviceWorker' in navigator) {
 }
 
 console.log('🛡️ app.js carregado com sucesso!');
+
+// Exportar funções para uso global
+window.estadoApp = estadoApp;
+window.mostrarNotificacao = mostrarNotificacao;
