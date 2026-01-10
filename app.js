@@ -13,7 +13,12 @@ import {
   query,
   where,
   orderBy,
-  serverTimestamp
+  limit,
+  serverTimestamp,
+  onSnapshot,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
 } from './firebase.js';
 
 // Estado global
