@@ -6,14 +6,141 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#b00000",
-  "orientation": "portrait",
-  "categories": ["business", "productivity", "safety"],
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "id": "/",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "safety", "health"],
   "icons": [
-    { "src": "assets/logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
-    { "src": "assets/logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "72x72",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "96x96",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "128x128",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "144x144",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "152x152",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "384x384",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
   ],
+  "screenshots": [
+    {
+      "src": "assets/screenshot1.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Dashboard do Gestor"
+    },
+    {
+      "src": "assets/screenshot2.jpg",
+      "sizes": "750x1334",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Tela do Colaborador"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar Incidente",
+      "short_name": "Incidente",
+      "description": "Registrar novo incidente de segurança",
+      "url": "/?action=incidente",
+      "icons": [
+        {
+          "src": "assets/icon-incidente.jpg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Botão de Emergência",
+      "short_name": "Emergência",
+      "description": "Ativar situação de emergência",
+      "url": "/?action=emergencia",
+      "icons": [
+        {
+          "src": "assets/icon-emergencia.jpg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard Gestor",
+      "short_name": "Dashboard",
+      "description": "Acessar painel de controle",
+      "url": "/?action=dashboard",
+      "icons": [
+        {
+          "src": "assets/icon-dashboard.jpg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "protocol_handlers": [
+    {
+      "protocol": "web+qssma",
+      "url": "/?action=%s"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "window-controls-overlay"
+  ],
+  "handle_links": "preferred",
+  "edge_side_panel": {},
   "permissions": [
     "notifications",
-    "geolocation"
-  ]
+    "geolocation",
+    "background-sync",
+    "periodic-background-sync"
+  ],
+  "background": {
+    "scripts": ["firebase.js", "app.js"]
+  }
 }
