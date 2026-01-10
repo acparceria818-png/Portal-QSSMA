@@ -56,7 +56,7 @@
       <i class="fas fa-moon"></i>
     </button>
     <span class="connection-status" id="connectionStatus" title="Status da conexão">
-      <i class="fas fa-circle"></i>
+      <i class="fas fa-wifi"></i>
     </span>
   </div>
 </div>
@@ -158,6 +158,7 @@
           maxlength="10"
           autocomplete="off"
           autofocus
+          onkeypress="if(event.key === 'Enter') confirmarMatriculaUsuario()"
         />
         <div class="form-hint">
           <i class="fas fa-info-circle"></i> Exemplo: QSS1234
@@ -183,7 +184,7 @@
   <!-- TELA: USUÁRIO AUTENTICADO -->
   <section id="tela-usuario" class="tela hidden">
     <div class="user-header">
-      <div class="user-avatar">
+      <div class="user-avatar-large">
         <i class="fas fa-user-circle"></i>
       </div>
       <div class="user-info">
@@ -193,27 +194,52 @@
             <i class="fas fa-id-card"></i> <span id="usuarioMatricula"></span>
           </span>
           <span class="user-badge">
-            <i class="fas fa-building"></i> <span id="usuarioSetor">Setor de Produção</span>
+            <i class="fas fa-building"></i> <span id="usuarioSetor">Setor de Segurança</span>
           </span>
-        </div>
-        <div class="user-tags">
-          <span class="user-tag"><i class="fas fa-shield-alt"></i> Segurança Nível 1</span>
-          <span class="user-tag"><i class="fas fa-calendar-check"></i> EPI Atualizado</span>
+          <span class="user-badge">
+            <i class="fas fa-briefcase"></i> <span id="usuarioFuncao"></span>
+          </span>
         </div>
       </div>
     </div>
     
     <div class="cards-grid">
-      <div class="feature-card" onclick="registrarIncidente()">
-        <div class="card-icon danger">
-          <i class="fas fa-exclamation-triangle"></i>
+      <!-- Botões de Inspeção -->
+      <div class="feature-card" onclick="abrirInformeEvento()">
+        <div class="card-icon primary">
+          <i class="fas fa-clipboard-list"></i>
         </div>
-        <h3>Registrar Incidente</h3>
-        <p>Registre incidentes ou near misses</p>
+        <h3>INFORME DE EVENTO</h3>
+        <p>Registrar eventos de segurança</p>
+        <div class="card-hint">
+          <small>Formulário externo</small>
+        </div>
+      </div>
+      
+      <div class="feature-card" onclick="abrirRadarMovel()">
+        <div class="card-icon warning">
+          <i class="fas fa-tachometer-alt"></i>
+        </div>
+        <h3>RADAR MÓVEL DE VELOCIDADE</h3>
+        <p>Registro de controle de velocidade</p>
+        <div class="card-hint">
+          <small>Formulário externo</small>
+        </div>
+      </div>
+      
+      <div class="feature-card" onclick="abrirFlashReport()">
+        <div class="card-icon info">
+          <i class="fas fa-bolt"></i>
+        </div>
+        <h3>FLASH REPORT</h3>
+        <p>Relatório rápido de ocorrências</p>
+        <div class="card-hint">
+          <small>Formulário externo</small>
+        </div>
       </div>
       
       <div class="feature-card" onclick="mostrarAvisos()">
-        <div class="card-icon warning">
+        <div class="card-icon secondary">
           <i class="fas fa-bullhorn"></i>
         </div>
         <h3>Avisos & Comunicados</h3>
@@ -222,27 +248,11 @@
       </div>
       
       <div class="feature-card" onclick="verificarEPIs()">
-        <div class="card-icon info">
+        <div class="card-icon dark">
           <i class="fas fa-helmet-safety"></i>
         </div>
         <h3>Checklist EPIs</h3>
         <p>Verifique seus equipamentos de proteção</p>
-      </div>
-      
-      <div class="feature-card" onclick="abrirFeedback('usuario')">
-        <div class="card-icon secondary">
-          <i class="fas fa-comment-dots"></i>
-        </div>
-        <h3>Feedback/Sugestões</h3>
-        <p>Melhorias para a segurança</p>
-      </div>
-      
-      <div class="feature-card" onclick="consultarProcedimentos()">
-        <div class="card-icon dark">
-          <i class="fas fa-file-alt"></i>
-        </div>
-        <h3>Procedimentos</h3>
-        <p>Consulte procedimentos de segurança</p>
       </div>
       
       <div class="feature-card emergency" onclick="ativarEmergencia()" id="emergenciaBtn">
@@ -259,6 +269,25 @@
         </div>
         <h3>Suporte QSSMA</h3>
         <p>Contato de suporte 24h</p>
+        <div class="card-hint">
+          <small>+55 93 9205-9914</small>
+        </div>
+      </div>
+      
+      <div class="feature-card" onclick="abrirFeedback('usuario')">
+        <div class="card-icon success">
+          <i class="fas fa-comment-dots"></i>
+        </div>
+        <h3>Feedback/Sugestões</h3>
+        <p>Melhorias para a segurança</p>
+      </div>
+      
+      <div class="feature-card" onclick="consultarProcedimentos()">
+        <div class="card-icon">
+          <i class="fas fa-file-alt"></i>
+        </div>
+        <h3>Procedimentos</h3>
+        <p>Consulte procedimentos de segurança</p>
       </div>
     </div>
     
@@ -301,6 +330,7 @@
       
       <div class="auth-footer">
         <p><i class="fas fa-exclamation-circle"></i> Acesso restrito aos gestores QSSMA</p>
+        <p><small>Configure as credenciais no Firebase Authentication</small></p>
       </div>
     </div>
     
@@ -316,6 +346,9 @@
     <div class="section-header">
       <h2><i class="fas fa-tachometer-alt"></i> Painel de Controle QSSMA</h2>
       <p>Dashboard de gestão - Monitoramento em tempo real</p>
+      <div class="gestor-info">
+        <span><i class="fas fa-user-tie"></i> <span id="gestorNomeDashboard">Gestor QSSMA</span></span>
+      </div>
     </div>
     
     <div class="stats-grid">
@@ -381,6 +414,9 @@
     <div class="tab-content active" id="tabIncidentes">
       <div class="tab-header">
         <h3><i class="fas fa-exclamation-triangle"></i> Incidentes Registrados</h3>
+        <button class="btn small" onclick="atualizarListaIncidentes()">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
       </div>
       <div class="incidentes-container" id="incidentesList">
         <div class="loading-state">
@@ -427,6 +463,7 @@
                 <i class="fas fa-bullhorn"></i>
               </div>
               <h4>Gerenciar Avisos</h4>
+              <p>Criar e gerenciar avisos</p>
             </div>
             
             <div class="admin-action-card" onclick="gerenciarProcedimentos()">
@@ -434,6 +471,7 @@
                 <i class="fas fa-file-alt"></i>
               </div>
               <h4>Procedimentos</h4>
+              <p>Gerenciar procedimentos</p>
             </div>
             
             <div class="admin-action-card" onclick="gerenciarEPIs()">
@@ -441,6 +479,7 @@
                 <i class="fas fa-helmet-safety"></i>
               </div>
               <h4>Controle de EPIs</h4>
+              <p>Gerenciar equipamentos</p>
             </div>
             
             <div class="admin-action-card" onclick="gerenciarTreinamentos()">
@@ -448,6 +487,7 @@
                 <i class="fas fa-graduation-cap"></i>
               </div>
               <h4>Treinamentos</h4>
+              <p>Agendar treinamentos</p>
             </div>
             
             <div class="admin-action-card" onclick="gerenciarUsuarios()">
@@ -455,6 +495,7 @@
                 <i class="fas fa-users"></i>
               </div>
               <h4>Colaboradores</h4>
+              <p>Gerenciar usuários</p>
             </div>
             
             <div class="admin-action-card whatsapp" onclick="abrirSuporteWhatsApp()">
@@ -462,6 +503,7 @@
                 <i class="fab fa-whatsapp"></i>
               </div>
               <h4>Suporte WhatsApp</h4>
+              <p>+55 93 9205-9914</p>
             </div>
           </div>
         </div>
@@ -509,6 +551,30 @@
     </div>
   </section>
 
+  <!-- TELA: GERENCIAR AVISOS -->
+  <section id="tela-gerenciar-avisos" class="tela hidden">
+    <div class="section-header">
+      <h2><i class="fas fa-bullhorn"></i> Gerenciar Avisos</h2>
+      <p>Crie, edite e remova avisos para os colaboradores</p>
+    </div>
+    
+    <div class="gestao-header">
+      <button class="btn btn-primary" onclick="criarNovoAviso()">
+        <i class="fas fa-plus"></i> Novo Aviso
+      </button>
+      <button class="btn" onclick="mostrarTela('tela-gestor-dashboard')">
+        <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+      </button>
+    </div>
+    
+    <div class="avisos-gestor-container" id="listaAvisosGestor">
+      <div class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Carregando avisos...</p>
+      </div>
+    </div>
+  </section>
+
   <!-- TELA: FEEDBACK -->
   <section id="tela-feedback-usuario" class="tela hidden">
     <div class="section-header">
@@ -546,23 +612,6 @@
 
 </main>
 
-<!-- MODAIS -->
-<div id="avisosModalBack" class="modal-back" aria-hidden="true" style="display:none">
-  <div class="modal">
-    <button class="close" onclick="closeModal('avisosModalBack')" aria-label="Fechar">✕</button>
-    <h3><i class="fas fa-bullhorn"></i> Avisos Importantes</h3>
-    <div class="avisos-list" id="avisosDinamicos">
-      <div class="loading-state">
-        <i class="fas fa-spinner fa-spin"></i>
-        <p>Carregando avisos...</p>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="closeModal('avisosModalBack')">Fechar</button>
-    </div>
-  </div>
-</div>
-
 <!-- LOADING OVERLAY -->
 <div id="loadingOverlay" class="loading-overlay" style="display:none">
   <div class="loading-content">
@@ -579,7 +628,7 @@
 
 <script>
   // Função para alternar entre tabs no gestor
-  function mostrarTab(tabId) {
+  window.mostrarTab = function(tabId) {
     // Esconder todas as tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
       tab.classList.remove('active');
@@ -601,7 +650,7 @@
     if (clickedButton) {
       clickedButton.classList.add('active');
     }
-  }
+  };
   
   // Funções de modal
   window.openModal = function(modalType) {
