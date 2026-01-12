@@ -1892,6 +1892,100 @@ body.dark .card-icon {
   }
 }
 
+/* ========== MELHORIAS PARA MOBILE ========== */
+.avatar-container {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+/* Efeito sutil no avatar */
+.avatar-container::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+/* Ajustes nos botões para mobile */
+.btn-large {
+  padding: 12px 20px;
+  font-size: 14px;
+  min-height: 46px;
+  width: 100%;                    /* Botão ocupa toda largura em mobile */
+  max-width: 280px;               /* Mas com limite máximo */
+  margin: 0 auto;
+  display: block;
+}
+
+/* Ajuste no subtítulo */
+.welcome-subtitle {
+  font-size: 13px;
+  color: var(--gray);
+  margin-bottom: 20px;
+  line-height: 1.4;
+  padding: 0 10px;
+}
+
+/* Cards grid ajustado para mobile */
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;     /* 1 coluna em mobile */
+  gap: 12px;
+  margin: 15px 0;
+}
+
+.feature-card {
+  padding: 15px;                  /* Padding reduzido */
+  min-height: 120px;              /* Altura mínima reduzida */
+}
+
+.feature-card .card-icon {
+  width: 40px;                    /* Ícones menores */
+  height: 40px;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.feature-card h3 {
+  font-size: 14px;                /* Títulos menores */
+  margin-bottom: 5px;
+}
+
+.feature-card p {
+  font-size: 11px;                /* Texto menor */
+}
+
+/* Para tablets (2 colunas) */
+@media (min-width: 480px) {
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .btn-large {
+    width: auto;                  /* Botão volta ao tamanho normal */
+    display: inline-flex;
+  }
+}
+
+/* Para desktop (3 colunas) */
+@media (min-width: 768px) {
+  .cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+  }
+  
+  .feature-card {
+    padding: 20px;
+    min-height: 140px;
+  }
+}
+
 @media (min-width: 1024px) {
   /* Desktop - tamanho confortável */
   .avatar-large {
