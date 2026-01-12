@@ -1852,8 +1852,8 @@ body.dark .card-icon {
 @media (min-width: 768px) {
   /* Tablets - um pouco maior */
   .avatar-large {
-    width: 90px;
-    height: 90px;
+    width: 150px;
+    height: 200px;
     border-width: 4px;
     margin: 20px auto;
   }
@@ -1995,8 +1995,8 @@ body.dark .card-icon {
   }
   
   .user-avatar-large {
-    width: 90px;
-    height: 90px;
+    width: 150px;
+    height: 200px;
     font-size: 40px;
   }
   
