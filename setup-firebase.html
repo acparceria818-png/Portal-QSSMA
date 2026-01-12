@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Firebase - Portal QSSMA</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .step { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        code { background: #333; color: #fff; padding: 2px 6px; border-radius: 4px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Configuração do Firebase - Portal QSSMA</h1>
+        
+        <div class="step">
+            <h2>1. Configurar Regras de Segurança</h2>
+            <p>Acesse: <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a></p>
+            <p>Vá para: <strong>Firestore Database → Rules</strong></p>
+            <p>Cole as seguintes regras:</p>
+            <pre><code>
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regras temporárias para desenvolvimento
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+            </code></pre>
+            <p class="success">✅ Clique em "Publicar"</p>
+        </div>
+        
+        <div class="step">
+            <h2>2. Configurar Authentication</h2>
+            <p>Vá para: <strong>Authentication → Sign-in method</strong></p>
+            <p>Habilite: <strong>Email/Password</strong></p>
+            <p>Clique em "Salvar"</p>
+        </div>
+        
+        <div class="step">
+            <h2>3. Criar Primeiro Gestor</h2>
+            <p>Vá para: <strong>Authentication → Users</strong></p>
+            <p>Clique em "Adicionar usuário"</p>
+            <p>Preencha:</p>
+            <ul>
+                <li>Email: gestor@empresa.com</li>
+                <li>Senha: 123456 (troque depois)</li>
+            </ul>
+            <p>Clique em "Adicionar usuário"</p>
+        </div>
+        
+        <div class="step">
+            <h2>4. Criar Primeiro Colaborador</h2>
+            <p>Vá para: <strong>Firestore Database → Data</strong></p>
+            <p>Clique em "Iniciar coleção"</p>
+            <p>Coleção ID: <code>colaboradores</code></p>
+            <p>Documento ID: <code>QS1001</code></p>
+            <p>Campos:</p>
+            <ul>
+                <li><code>nome</code> (string): "João da Silva"</li>
+                <li><code>matricula</code> (string): "QS1001"</li>
+                <li><code>funcao</code> (string): "Analista de Segurança"</li>
+                <li><code>setor</code> (string): "Segurança"</li>
+                <li><code>ativo</code> (boolean): true</li>
+                <li><code>email</code> (string): "joao@empresa.com"</li>
+            </ul>
+            <p>Clique em "Salvar"</p>
+        </div>
+        
+        <div class="step">
+            <h2>5. Testar o Sistema</h2>
+            <p>Agora você pode testar:</p>
+            <ul>
+                <li><strong>Login Colaborador:</strong> Use a matrícula QS1001</li>
+                <li><strong>Login Gestor:</strong> Use o email e senha criados</li>
+                <li><strong>Criar Avisos:</strong> Acesse como gestor e crie avisos</li>
+            </ul>
+        </div>
+        
+        <div class="step">
+            <h2>6. Regras de Produção (Recomendadas)</h2>
+            <p>Após testar, atualize as regras para:</p>
+            <pre><code>
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Colaboradores: leitura pública, escrita apenas para autenticados
+    match /colaboradores/{matricula} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Avisos: leitura pública, escrita apenas para gestores
+    match /avisos/{avisoId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+            </code></pre>
+        </div>
+    </div>
+</body>
+</html>
