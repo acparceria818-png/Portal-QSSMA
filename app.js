@@ -484,6 +484,11 @@ window.salvarNovoAviso = async function() {
   try {
     showLoading('Salvando aviso...');
     
+    // Verificar se o usuário está autenticado
+    if (!auth.currentUser) {
+      throw new Error('Usuário não autenticado. Faça login novamente.');
+    }
+    
     await registrarAviso({
       titulo: titulo,
       mensagem: mensagem,
@@ -499,7 +504,7 @@ window.salvarNovoAviso = async function() {
     
   } catch (erro) {
     console.error('Erro ao salvar aviso:', erro);
-    alert('❌ Erro ao salvar aviso');
+    alert(`❌ Erro ao salvar aviso: ${erro.message}\n\nVerifique se está logado como gestor.`);
   } finally {
     hideLoading();
   }
