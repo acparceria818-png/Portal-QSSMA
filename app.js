@@ -1,35 +1,20 @@
-// app.js - PORTAL QSSMA (VERSÃO CORRIGIDA)
+// app.js - PORTAL QSSMA
 import { 
   db,
   auth,
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  onSnapshot,
-  signInWithEmailAndPassword,
-  signOut,
   getColaborador,
-  getGestorByEmail,
-  getAvisosAtivos,
-  monitorarAvisos,
-  addAviso,
+  registrarAviso,
+  getAvisos,
   updateAviso,
   deleteAviso,
-  addFeedback,
-  getEstatisticas,
-  criarDadosIniciais
+  monitorarAvisos,
+  getEstatisticasDashboard,
+  loginEmailSenha
 } from './firebase.js';
 
-// Estado global
+// Estado global do aplicativo
 let estadoApp = {
   usuario: null,
   gestor: null,
@@ -40,30 +25,9 @@ let estadoApp = {
   estatisticas: null
 };
 
-// URLs dos formulários
-const FORM_URLS = {
-  'informe-evento': 'https://forms.gle/4kxcxyYX8wzdDyDt5',
-  'radar-velocidade': 'https://forms.gle/BZahsh5ZAAVyixjx5',
-  'flash-report': 'https://forms.gle/9d6f4w7hcpyDSCCs5'
-};
-
-// Contato de suporte
-const SUPORTE_WHATSAPP = '+559392059914';
-
-// Credenciais padrão para teste (TEMPORÁRIO)
-const CREDENCIAIS_TESTE = {
-  gestor: {
-    email: "admin@qssma.com",
-    senha: "admin123"
-  }
-};
-
 // ========== INICIALIZAÇÃO ==========
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   console.log('🚀 Portal QSSMA - Inicializando...');
-  
-  // Adicionar rodapé
-  adicionarRodape();
   
   // Verificar sessão existente
   verificarSessao();
@@ -75,78 +39,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   initConnectionMonitor();
   initAvisos();
   
-  // Criar dados iniciais se necessário
-  await criarDadosIniciais();
-  
-  console.log('✅ Portal QSSMA inicializado');
+  console.log('✅ Portal QSSMA inicializado com sucesso');
 });
-
-// ========== ADICIONAR RODAPÉ ==========
-function adicionarRodape() {
-  if (document.querySelector('.footer-dev')) return;
-  
-  const footer = document.createElement('footer');
-  footer.className = 'footer-dev';
-  footer.innerHTML = `
-    <div class="footer-content">
-      <span>Desenvolvido por Juan Sales</span>
-      <div class="footer-contacts">
-        <a href="tel:+5594992233753"><i class="fas fa-phone"></i> (94) 99223-3753</a>
-        <a href="mailto:Juansalesadm@gmail.com"><i class="fas fa-envelope"></i> Juansalesadm@gmail.com</a>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(footer);
-}
 
 // ========== GERENCIAMENTO DE SESSÃO ==========
 function verificarSessao() {
   const perfil = localStorage.getItem('perfil_ativo');
-  const usuarioMatricula = localStorage.getItem('usuario_matricula');
-  const usuarioNome = localStorage.getItem('usuario_nome');
+  const matricula = localStorage.getItem('usuario_matricula');
+  const nome = localStorage.getItem('usuario_nome');
   const gestorLogado = localStorage.getItem('gestor_logado');
   
-  if (perfil === 'usuario' && usuarioMatricula && usuarioNome) {
+  if (perfil === 'usuario' && matricula && nome) {
     estadoApp.usuario = { 
-      matricula: usuarioMatricula,
-      nome: usuarioNome,
-      setor: localStorage.getItem('usuario_setor') || 'Segurança',
-      funcao: localStorage.getItem('usuario_funcao') || 'Colaborador'
+      matricula, 
+      nome,
+      funcao: localStorage.getItem('usuario_funcao') || 'Não informada'
     };
     estadoApp.perfil = 'usuario';
     mostrarTela('tela-usuario');
-    updateUserStatus(usuarioNome, usuarioMatricula);
+    updateUserStatus(nome, matricula);
     iniciarMonitoramentoAvisos();
-    
   } else if (perfil === 'gestor' && gestorLogado) {
     estadoApp.perfil = 'gestor';
     estadoApp.gestor = { 
-      nome: localStorage.getItem('gestor_nome') || 'Gestor QSSMA',
+      nome: 'Gestor',
       email: localStorage.getItem('gestor_email')
     };
     mostrarTela('tela-gestor-dashboard');
     iniciarMonitoramentoAvisos();
-    carregarEstatisticas();
+    carregarEstatisticasGestor();
   }
 }
 
 function updateUserStatus(nome, matricula) {
   const userStatus = document.getElementById('userStatus');
   const userName = document.getElementById('userName');
+  const colaboradorNome = document.getElementById('colaboradorNome');
+  const colaboradorMatricula = document.getElementById('colaboradorMatricula');
+  const colaboradorFuncao = document.getElementById('colaboradorFuncao');
   
   if (userStatus) userStatus.style.display = 'flex';
   if (userName) userName.textContent = nome;
-  
-  if (estadoApp.usuario) {
-    const usuarioNome = document.getElementById('usuarioNome');
-    const usuarioMatricula = document.getElementById('usuarioMatricula');
-    const usuarioSetor = document.getElementById('usuarioSetor');
-    const usuarioFuncao = document.getElementById('usuarioFuncao');
-    
-    if (usuarioNome) usuarioNome.textContent = estadoApp.usuario.nome;
-    if (usuarioMatricula) usuarioMatricula.textContent = estadoApp.usuario.matricula;
-    if (usuarioSetor) usuarioSetor.textContent = estadoApp.usuario.setor;
-    if (usuarioFuncao) usuarioFuncao.textContent = estadoApp.usuario.funcao;
+  if (colaboradorNome) colaboradorNome.textContent = nome;
+  if (colaboradorMatricula) colaboradorMatricula.textContent = matricula;
+  if (colaboradorFuncao) {
+    colaboradorFuncao.textContent = localStorage.getItem('usuario_funcao') || 'Não informada';
   }
 }
 
@@ -167,71 +104,70 @@ window.selecionarPerfil = function (perfil) {
   }
 };
 
-// ========== LOGIN USUÁRIO (CORRIGIDO) ==========
-window.loginUsuario = async function () {
+// ========== LOGIN USUÁRIO ==========
+window.confirmarMatriculaUsuario = async function () {
+  showLoading('🔍 Validando matrícula...');
+  
   const input = document.getElementById('matriculaUsuario');
   const loginBtn = document.getElementById('loginUsuarioBtn');
   
   if (!input) {
     alert('Campo de matrícula não encontrado');
+    hideLoading();
     return;
   }
 
-  const matricula = input.value.trim();
+  const matricula = input.value.trim().toUpperCase();
 
   if (!matricula) {
     alert('Informe sua matrícula');
     input.focus();
+    hideLoading();
     return;
   }
 
-  showLoading('🔍 Validando matrícula...');
-  
   try {
-    if (loginBtn) {
-      loginBtn.disabled = true;
-      loginBtn.textContent = 'Validando...';
-    }
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Validando...';
     
-    const resultado = await getColaborador(matricula);
-    
-    if (!resultado.exists) {
-      hideLoading();
-      alert('❌ Matrícula não encontrada\n\nVerifique se digitou corretamente.\nMatrículas de exemplo: QSSMA001, QSSMA002');
-      if (loginBtn) {
-        loginBtn.disabled = false;
-        loginBtn.textContent = 'Entrar';
-      }
+    const snap = await getColaborador(matricula);
+
+    if (!snap.exists()) {
+      alert('❌ Matrícula não encontrada');
+      input.focus();
       return;
     }
 
-    const dados = resultado.data;
-    
-    // Salvar dados na sessão
-    localStorage.setItem('usuario_matricula', resultado.id || matricula);
-    localStorage.setItem('usuario_nome', dados.nome || 'Colaborador');
-    localStorage.setItem('usuario_setor', dados.setor || 'Segurança');
-    localStorage.setItem('usuario_funcao', dados.funcao || 'Colaborador');
+    const dados = snap.data();
+
+    if (!dados.ativo) {
+      alert('❌ Colaborador inativo. Contate a gestão.');
+      return;
+    }
+
+    localStorage.setItem('usuario_matricula', matricula);
+    localStorage.setItem('usuario_nome', dados.nome);
+    localStorage.setItem('usuario_funcao', dados.funcao || 'Não informada');
+    localStorage.setItem('usuario_email', dados.email || '');
     localStorage.setItem('perfil_ativo', 'usuario');
     
     estadoApp.usuario = { 
-      matricula: resultado.id || matricula, 
-      nome: dados.nome || 'Colaborador',
-      setor: dados.setor || 'Segurança',
-      funcao: dados.funcao || 'Colaborador'
+      matricula, 
+      nome: dados.nome,
+      funcao: dados.funcao || 'Não informada',
+      email: dados.email || ''
     };
     
-    console.log('✅ Colaborador autenticado:', dados.nome);
-    
-    mostrarTela('tela-usuario');
     updateUserStatus(dados.nome, matricula);
+    mostrarTela('tela-usuario');
     iniciarMonitoramentoAvisos();
     
+    console.log('✅ Colaborador autenticado:', dados.nome);
     mostrarNotificacao('✅ Login realizado', `Bem-vindo(a), ${dados.nome}!`);
 
   } catch (erro) {
-    console.error('Erro login usuário:', erro);
-    alert('❌ Erro ao validar matrícula. Verifique sua conexão.');
+    console.error('Erro Firebase:', erro);
+    alert('❌ Erro ao validar matrícula. Verifique sua conexão e tente novamente.');
   } finally {
     hideLoading();
     if (loginBtn) {
@@ -241,7 +177,7 @@ window.loginUsuario = async function () {
   }
 };
 
-// ========== LOGIN GESTOR (SIMPLIFICADO PARA TESTE) ==========
+// ========== LOGIN GESTOR ==========
 window.loginGestor = async function () {
   const email = document.getElementById('gestorEmail').value;
   const senha = document.getElementById('gestorSenha').value;
@@ -251,90 +187,42 @@ window.loginGestor = async function () {
     return;
   }
   
-  showLoading('🔐 Autenticando...');
+  showLoading('🔐 Autenticando gestor...');
   
   try {
-    // Para facilitar os testes, vamos usar credenciais fixas
-    // Você pode configurar o Firebase Auth depois
+    // Autenticação via Firebase Auth
+    const user = await loginEmailSenha(email, senha);
     
-    if (email === CREDENCIAIS_TESTE.gestor.email && senha === CREDENCIAIS_TESTE.gestor.senha) {
-      
-      // Buscar dados do gestor no Firestore
-      const gestorDoc = await getGestorByEmail(email);
-      
-      if (gestorDoc) {
-        const gestorData = gestorDoc.data();
-        
-        // Salvar sessão
-        localStorage.setItem('gestor_logado', 'true');
-        localStorage.setItem('gestor_email', email);
-        localStorage.setItem('gestor_nome', gestorData.nome || 'Gestor QSSMA');
-        localStorage.setItem('gestor_id', gestorDoc.id);
-        localStorage.setItem('perfil_ativo', 'gestor');
-        
-        estadoApp.gestor = { 
-          email, 
-          nome: gestorData.nome || 'Gestor QSSMA',
-          id: gestorDoc.id
-        };
-        
-        mostrarTela('tela-gestor-dashboard');
-        iniciarMonitoramentoAvisos();
-        carregarEstatisticas();
-        
-        console.log('✅ Gestor autenticado:', gestorData.nome);
-        mostrarNotificacao('✅ Acesso concedido', 'Painel de gestão liberado');
-        
-      } else {
-        // Se não encontrou na coleção, criar sessão básica
-        localStorage.setItem('gestor_logado', 'true');
-        localStorage.setItem('gestor_email', email);
-        localStorage.setItem('gestor_nome', 'Administrador QSSMA');
-        localStorage.setItem('perfil_ativo', 'gestor');
-        
-        estadoApp.gestor = { 
-          email, 
-          nome: 'Administrador QSSMA'
-        };
-        
-        mostrarTela('tela-gestor-dashboard');
-        iniciarMonitoramentoAvisos();
-        carregarEstatisticas();
-        
-        console.log('✅ Gestor admin padrão autenticado');
-        mostrarNotificacao('✅ Modo administrador', 'Usando credenciais padrão');
-      }
-      
-    } else {
-      hideLoading();
-      alert('❌ Credenciais inválidas\n\nUse:\nE-mail: admin@qssma.com\nSenha: admin123');
-    }
+    localStorage.setItem('gestor_logado', 'true');
+    localStorage.setItem('gestor_email', email);
+    localStorage.setItem('gestor_uid', user.uid);
+    localStorage.setItem('perfil_ativo', 'gestor');
+    
+    estadoApp.gestor = { 
+      email, 
+      uid: user.uid,
+      nome: 'Gestor QSSMA'
+    };
+    
+    mostrarTela('tela-gestor-dashboard');
+    iniciarMonitoramentoAvisos();
+    carregarEstatisticasGestor();
+    
+    console.log('✅ Gestor logado com sucesso');
+    mostrarNotificacao('✅ Acesso Gestor', 'Painel administrativo liberado');
     
   } catch (erro) {
-    console.error('Erro login gestor:', erro);
+    console.error('Erro no login gestor:', erro);
+    alert(`❌ Erro ao fazer login:\n\n${erro.message}`);
+  } finally {
     hideLoading();
-    alert('❌ Erro na autenticação. Tente usar as credenciais padrão.');
   }
 };
 
 // ========== LOGOUT ==========
-window.logout = async function () {
-  try {
-    // Se for gestor, tentar logout do Firebase Auth
-    if (estadoApp.perfil === 'gestor' && auth.currentUser) {
-      await signOut(auth);
-    }
-  } catch (erro) {
-    console.error('Erro ao fazer logout:', erro);
-  }
+window.logout = function () {
+  if (estadoApp.unsubscribeAvisos) estadoApp.unsubscribeAvisos();
   
-  // Limpar unsubscribe
-  if (estadoApp.unsubscribeAvisos) {
-    estadoApp.unsubscribeAvisos();
-    estadoApp.unsubscribeAvisos = null;
-  }
-  
-  // Limpar estado
   estadoApp = {
     usuario: null,
     gestor: null,
@@ -345,18 +233,15 @@ window.logout = async function () {
     estatisticas: null
   };
   
-  // Limpar localStorage
   localStorage.removeItem('perfil_ativo');
   localStorage.removeItem('usuario_matricula');
   localStorage.removeItem('usuario_nome');
-  localStorage.removeItem('usuario_setor');
   localStorage.removeItem('usuario_funcao');
+  localStorage.removeItem('usuario_email');
   localStorage.removeItem('gestor_logado');
   localStorage.removeItem('gestor_email');
-  localStorage.removeItem('gestor_nome');
-  localStorage.removeItem('gestor_id');
+  localStorage.removeItem('gestor_uid');
   
-  // Limpar UI
   const userStatus = document.getElementById('userStatus');
   if (userStatus) userStatus.style.display = 'none';
   
@@ -364,35 +249,6 @@ window.logout = async function () {
   
   console.log('👋 Usuário deslogado');
   mostrarNotificacao('👋 Até logo', 'Você saiu do sistema');
-};
-
-// ========== FUNÇÕES DOS FORMULÁRIOS ==========
-window.abrirFormulario = function(tipo) {
-  const url = FORM_URLS[tipo];
-  if (url) {
-    window.open(url, '_blank', 'noopener,noreferrer');
-    mostrarNotificacao('📋 Formulário Aberto', `Abrindo ${getNomeFormulario(tipo)}`);
-  } else {
-    alert('Formulário não disponível');
-  }
-};
-
-function getNomeFormulario(tipo) {
-  const nomes = {
-    'informe-evento': 'Informe de Evento',
-    'radar-velocidade': 'Radar Móvel de Velocidade',
-    'flash-report': 'Flash Report'
-  };
-  return nomes[tipo] || 'Formulário';
-}
-
-// ========== SUPORTE WHATSAPP ==========
-window.abrirSuporteWhatsApp = function() {
-  const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
-  const url = `https://wa.me/${SUPORTE_WHATSAPP.replace(/\D/g, '')}?text=${mensagem}`;
-  
-  window.open(url, '_blank', 'noopener,noreferrer');
-  mostrarNotificacao('📞 Suporte', 'Abrindo WhatsApp de suporte');
 };
 
 // ========== NAVEGAÇÃO ENTRE TELAS ==========
@@ -413,43 +269,39 @@ window.mostrarTela = function(id) {
   alvo.classList.remove('hidden');
   alvo.classList.add('ativa');
   
+  switch(id) {
+    case 'tela-gestor-dashboard':
+      carregarEstatisticasGestor();
+      carregarAvisosGestor();
+      break;
+    case 'tela-usuario':
+      atualizarInfoUsuario();
+      break;
+  }
+  
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// ========== MONITORAMENTO DE AVISOS ==========
-function iniciarMonitoramentoAvisos() {
-  if (estadoApp.unsubscribeAvisos) {
-    estadoApp.unsubscribeAvisos();
-  }
+function atualizarInfoUsuario() {
+  if (!estadoApp.usuario) return;
   
-  estadoApp.unsubscribeAvisos = monitorarAvisos((avisos) => {
-    estadoApp.avisosAtivos = avisos;
-    atualizarContadorAvisos();
-    
-    // Atualizar lista de avisos se estiver visível
-    if (document.getElementById('tela-gestor-dashboard')?.classList.contains('ativa')) {
-      atualizarListaAvisosGestor(avisos);
-    }
-  });
+  const nomeElement = document.getElementById('colaboradorNome');
+  const matriculaElement = document.getElementById('colaboradorMatricula');
+  const funcaoElement = document.getElementById('colaboradorFuncao');
+  
+  if (nomeElement) nomeElement.textContent = estadoApp.usuario.nome;
+  if (matriculaElement) matriculaElement.textContent = estadoApp.usuario.matricula;
+  if (funcaoElement) funcaoElement.textContent = estadoApp.usuario.funcao;
 }
 
-function atualizarContadorAvisos() {
-  const avisosCount = document.getElementById('avisosCount');
-  const avisosCountUsuario = document.getElementById('avisosCountUsuario');
-  const count = estadoApp.avisosAtivos.length;
-  
-  if (avisosCount) {
-    avisosCount.textContent = count;
-    avisosCount.style.display = count > 0 ? 'inline' : 'none';
-  }
-  
-  if (avisosCountUsuario) {
-    avisosCountUsuario.textContent = count;
-    avisosCountUsuario.style.display = count > 0 ? 'inline' : 'none';
+// ========== AVISOS ==========
+function initAvisos() {
+  const avisosBtn = document.getElementById('avisosBtn');
+  if (avisosBtn) {
+    avisosBtn.addEventListener('click', mostrarAvisos);
   }
 }
 
-// ========== MOSTRAR AVISOS ==========
 window.mostrarAvisos = function() {
   const avisos = estadoApp.avisosAtivos || [];
   
@@ -458,111 +310,169 @@ window.mostrarAvisos = function() {
     return;
   }
   
-  const avisosHTML = avisos.map(aviso => `
-    <div class="aviso-item" data-tipo="${aviso.tipo || 'informativo'}">
+  const avisosHTML = avisos.filter(aviso => aviso.ativo).map(aviso => `
+    <div class="aviso-item">
       <div class="aviso-header">
-        <div class="aviso-titulo">${aviso.titulo}</div>
-        <div class="aviso-metadata">
-          <span class="aviso-tipo ${aviso.tipo || 'informativo'}">
-            ${aviso.tipo || 'Informativo'}
-          </span>
-          <span class="aviso-destino">Para: ${aviso.destino || 'Todos'}</span>
-          <span class="aviso-data">
-            <i class="fas fa-calendar"></i> 
-            ${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString('pt-BR') : ''}
-          </span>
-        </div>
+        <strong>${aviso.titulo}</strong>
+        <small>${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString() : ''}</small>
       </div>
-      <div class="aviso-mensagem">${aviso.mensagem}</div>
+      <p>${aviso.mensagem}</p>
+      <small class="aviso-destino">Para: ${aviso.destino || 'Todos'}</small>
     </div>
   `).join('');
   
-  const modal = document.getElementById('avisosModal');
-  const avisosDinamicos = document.getElementById('avisosDinamicos');
+  const modal = document.createElement('div');
+  modal.className = 'modal-back';
+  modal.innerHTML = `
+    <div class="modal">
+      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+      <h3>📢 Avisos e Comunicados</h3>
+      <div class="avisos-list">
+        ${avisosHTML}
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn" onclick="this.parentElement.parentElement.remove()">Fechar</button>
+      </div>
+    </div>
+  `;
   
-  if (modal && avisosDinamicos) {
-    avisosDinamicos.innerHTML = avisosHTML;
-    modal.style.display = 'flex';
-  }
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
 };
 
-// ========== FUNÇÕES DO GESTOR ==========
-async function carregarEstatisticas() {
-  try {
-    const estatisticas = await getEstatisticas();
-    estadoApp.estatisticas = estatisticas;
+function iniciarMonitoramentoAvisos() {
+  if (estadoApp.unsubscribeAvisos) return;
+  
+  estadoApp.unsubscribeAvisos = monitorarAvisos((avisos) => {
+    estadoApp.avisosAtivos = avisos;
     
-    // Atualizar contadores na tela
-    document.getElementById('usuariosAtivosCount').textContent = estatisticas.colaboradoresAtivos;
-    document.getElementById('eventosCount').textContent = '0'; // Placeholder
-    document.getElementById('radaresCount').textContent = '0'; // Placeholder
-    document.getElementById('reportsCount').textContent = '0'; // Placeholder
+    const avisosCount = document.getElementById('avisosCount');
+    if (avisosCount) {
+      avisosCount.textContent = avisos.length;
+      avisosCount.style.display = avisos.length > 0 ? 'inline' : 'none';
+    }
+    
+    const avisosAtivosCount = document.getElementById('avisosAtivosCount');
+    if (avisosAtivosCount) {
+      avisosAtivosCount.textContent = avisos.length;
+    }
+  });
+}
+
+// ========== GESTÃO DE AVISOS (GESTOR) ==========
+async function carregarAvisosGestor() {
+  try {
+    const avisos = await getAvisos();
+    estadoApp.avisosAtivos = avisos;
+    
+    const container = document.getElementById('avisosAdminList');
+    if (!container) return;
+    
+    if (avisos.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-bullhorn"></i>
+          <h4>Nenhum aviso cadastrado</h4>
+          <p>Clique em "Novo Aviso" para criar o primeiro.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = avisos.map(aviso => `
+      <div class="aviso-admin-item" id="aviso-${aviso.id}">
+        <div class="aviso-admin-header">
+          <div>
+            <h4>${aviso.titulo}</h4>
+            <small class="aviso-destino-badge">Para: ${aviso.destino || 'Todos'}</small>
+            <small class="aviso-data">${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleString() : ''}</small>
+          </div>
+          <div class="aviso-admin-actions">
+            <button class="icon-btn" onclick="editarAviso('${aviso.id}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="icon-btn danger" onclick="excluirAviso('${aviso.id}')" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="aviso-admin-content">
+          <p>${aviso.mensagem}</p>
+          <div class="aviso-status">
+            <span class="status-badge ${aviso.ativo ? 'ativo' : 'inativo'}">
+              ${aviso.ativo ? 'Ativo' : 'Inativo'}
+            </span>
+          </div>
+        </div>
+      </div>
+    `).join('');
     
   } catch (erro) {
-    console.error('Erro ao carregar estatísticas:', erro);
+    console.error('Erro ao carregar avisos:', erro);
+    const container = document.getElementById('avisosAdminList');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-exclamation-triangle"></i>
+          <h4>Erro ao carregar avisos</h4>
+          <p>Tente novamente mais tarde.</p>
+        </div>
+      `;
+    }
   }
 }
 
-function atualizarListaAvisosGestor(avisos) {
-  const container = document.getElementById('avisosList');
-  if (!container) return;
-  
-  if (avisos.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-bullhorn"></i>
-        <h4>Nenhum aviso cadastrado</h4>
-        <p>Clique em "Novo Aviso" para criar o primeiro.</p>
+window.criarNovoAviso = function() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-back';
+  modal.innerHTML = `
+    <div class="modal">
+      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+      <h3><i class="fas fa-plus"></i> Criar Novo Aviso</h3>
+      
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" id="novoAvisoTitulo" class="form-input" placeholder="Título do aviso" required>
       </div>
-    `;
-    return;
-  }
-  
-  container.innerHTML = avisos.map(aviso => `
-    <div class="aviso-item" data-tipo="${aviso.tipo || 'informativo'}">
-      <div class="aviso-header">
-        <div class="aviso-titulo">${aviso.titulo}</div>
-        <div class="aviso-metadata">
-          <span class="aviso-tipo ${aviso.tipo || 'informativo'}">
-            ${aviso.tipo || 'Informativo'}
-          </span>
-          <span class="aviso-destino">Para: ${aviso.destino || 'Todos'}</span>
-          <span class="aviso-data">
-            <i class="fas fa-calendar"></i> 
-            ${aviso.timestamp ? new Date(aviso.timestamp.toDate()).toLocaleDateString('pt-BR') : ''}
-          </span>
-          <span class="aviso-status ${aviso.ativo ? 'ativo' : 'inativo'}">
-            ${aviso.ativo ? 'Ativo' : 'Inativo'}
-          </span>
-        </div>
+      
+      <div class="form-group">
+        <label>Mensagem *</label>
+        <textarea id="novoAvisoMensagem" class="form-input" rows="4" placeholder="Mensagem do aviso" required></textarea>
       </div>
-      <div class="aviso-mensagem">${aviso.mensagem}</div>
-      <div class="aviso-actions">
-        <button class="btn btn-small" onclick="editarAviso('${aviso.id}')">
-          <i class="fas fa-edit"></i> Editar
+      
+      <div class="form-group">
+        <label>Destino</label>
+        <select id="novoAvisoDestino" class="form-input">
+          <option value="todos">Todos</option>
+          <option value="colaboradores">Colaboradores</option>
+          <option value="gestores">Gestores</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="novoAvisoAtivo" checked> Aviso ativo
+        </label>
+      </div>
+      
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="salvarNovoAviso()">
+          <i class="fas fa-save"></i> Salvar Aviso
         </button>
-        <button class="btn btn-small ${aviso.ativo ? 'btn-warning' : 'btn-success'}" 
-                onclick="toggleAviso('${aviso.id}', ${aviso.ativo})">
-          <i class="fas ${aviso.ativo ? 'fa-eye-slash' : 'fa-eye'}"></i> 
-          ${aviso.ativo ? 'Desativar' : 'Ativar'}
-        </button>
-        <button class="btn btn-small btn-danger" onclick="excluirAviso('${aviso.id}')">
-          <i class="fas fa-trash"></i> Excluir
+        <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
+          <i class="fas fa-times"></i> Cancelar
         </button>
       </div>
     </div>
-  `).join('');
-}
-
-// ========== CRUD DE AVISOS (GESTOR) ==========
-window.criarNovoAviso = function() {
-  openModal('novoAvisoModal');
+  `;
+  
+  document.body.appendChild(modal);
+  modal.style.display = 'flex';
 };
 
 window.salvarNovoAviso = async function() {
   const titulo = document.getElementById('novoAvisoTitulo').value;
   const mensagem = document.getElementById('novoAvisoMensagem').value;
-  const tipo = document.getElementById('novoAvisoTipo').value;
   const destino = document.getElementById('novoAvisoDestino').value;
   const ativo = document.getElementById('novoAvisoAtivo').checked;
   
@@ -574,21 +484,18 @@ window.salvarNovoAviso = async function() {
   try {
     showLoading('Salvando aviso...');
     
-    await addAviso({
-      titulo,
-      mensagem,
-      tipo,
-      destino,
-      ativo,
-      criadoPor: estadoApp.gestor?.nome || 'Gestor'
+    await registrarAviso({
+      titulo: titulo,
+      mensagem: mensagem,
+      destino: destino,
+      ativo: ativo,
+      timestamp: new Date()
     });
     
     mostrarNotificacao('✅ Aviso Criado', 'Aviso criado com sucesso!');
-    closeModal('novoAvisoModal');
     
-    // Limpar formulário
-    document.getElementById('novoAvisoTitulo').value = '';
-    document.getElementById('novoAvisoMensagem').value = '';
+    document.querySelector('.modal-back').remove();
+    carregarAvisosGestor();
     
   } catch (erro) {
     console.error('Erro ao salvar aviso:', erro);
@@ -599,74 +506,72 @@ window.salvarNovoAviso = async function() {
 };
 
 window.editarAviso = async function(avisoId) {
-  const aviso = estadoApp.avisosAtivos.find(a => a.id === avisoId);
-  if (!aviso) {
-    alert('Aviso não encontrado');
-    return;
+  try {
+    showLoading('Carregando aviso...');
+    
+    const aviso = estadoApp.avisosAtivos.find(a => a.id === avisoId);
+    if (!aviso) {
+      alert('Aviso não encontrado');
+      return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-back';
+    modal.innerHTML = `
+      <div class="modal">
+        <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
+        <h3><i class="fas fa-edit"></i> Editar Aviso</h3>
+        
+        <div class="form-group">
+          <label>Título *</label>
+          <input type="text" id="editarAvisoTitulo" class="form-input" value="${aviso.titulo || ''}" required>
+        </div>
+        
+        <div class="form-group">
+          <label>Mensagem *</label>
+          <textarea id="editarAvisoMensagem" class="form-input" rows="4" required>${aviso.mensagem || ''}</textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Destino</label>
+          <select id="editarAvisoDestino" class="form-input">
+            <option value="todos" ${aviso.destino === 'todos' ? 'selected' : ''}>Todos</option>
+            <option value="colaboradores" ${aviso.destino === 'colaboradores' ? 'selected' : ''}>Colaboradores</option>
+            <option value="gestores" ${aviso.destino === 'gestores' ? 'selected' : ''}>Gestores</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="editarAvisoAtivo" ${aviso.ativo ? 'checked' : ''}> Aviso ativo
+          </label>
+        </div>
+        
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="salvarEdicaoAviso('${avisoId}')">
+            <i class="fas fa-save"></i> Salvar Alterações
+          </button>
+          <button class="btn btn-secondary" onclick="this.parentElement.parentElement.parentElement.remove()">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'flex';
+    
+  } catch (erro) {
+    console.error('Erro ao carregar aviso:', erro);
+    alert('❌ Erro ao carregar aviso');
+  } finally {
+    hideLoading();
   }
-  
-  // Criar modal de edição
-  const modal = document.createElement('div');
-  modal.className = 'modal-back';
-  modal.innerHTML = `
-    <div class="modal">
-      <button class="close" onclick="this.parentElement.parentElement.remove()">✕</button>
-      <h3><i class="fas fa-edit"></i> Editar Aviso</h3>
-      
-      <div class="form-group">
-        <label>Título *</label>
-        <input type="text" id="editarAvisoTitulo" class="form-input" value="${aviso.titulo || ''}" required>
-      </div>
-      
-      <div class="form-group">
-        <label>Mensagem *</label>
-        <textarea id="editarAvisoMensagem" class="form-input" rows="4" required>${aviso.mensagem || ''}</textarea>
-      </div>
-      
-      <div class="form-group">
-        <label>Tipo</label>
-        <select id="editarAvisoTipo" class="form-input">
-          <option value="informativo" ${aviso.tipo === 'informativo' ? 'selected' : ''}>Informativo</option>
-          <option value="importante" ${aviso.tipo === 'importante' ? 'selected' : ''}>Importante</option>
-          <option value="urgente" ${aviso.tipo === 'urgente' ? 'selected' : ''}>Urgente</option>
-          <option value="emergencia" ${aviso.tipo === 'emergencia' ? 'selected' : ''}>Emergência</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label>Destino</label>
-        <select id="editarAvisoDestino" class="form-input">
-          <option value="todos" ${aviso.destino === 'todos' ? 'selected' : ''}>Todos os usuários</option>
-          <option value="gestores" ${aviso.destino === 'gestores' ? 'selected' : ''}>Apenas gestores</option>
-          <option value="colaboradores" ${aviso.destino === 'colaboradores' ? 'selected' : ''}>Apenas colaboradores</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label>
-          <input type="checkbox" id="editarAvisoAtivo" ${aviso.ativo ? 'checked' : ''}> Aviso ativo
-        </label>
-      </div>
-      
-      <div class="form-actions">
-        <button class="btn btn-primary" onclick="salvarEdicaoAviso('${avisoId}')">
-          <i class="fas fa-save"></i> Salvar Alterações
-        </button>
-        <button class="btn btn-secondary" onclick="this.parentElement.parentElement.remove()">
-          <i class="fas fa-times"></i> Cancelar
-        </button>
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  modal.style.display = 'flex';
 };
 
 window.salvarEdicaoAviso = async function(avisoId) {
   const titulo = document.getElementById('editarAvisoTitulo').value;
   const mensagem = document.getElementById('editarAvisoMensagem').value;
-  const tipo = document.getElementById('editarAvisoTipo').value;
   const destino = document.getElementById('editarAvisoDestino').value;
   const ativo = document.getElementById('editarAvisoAtivo').checked;
   
@@ -679,37 +584,21 @@ window.salvarEdicaoAviso = async function(avisoId) {
     showLoading('Salvando alterações...');
     
     await updateAviso(avisoId, {
-      titulo,
-      mensagem,
-      tipo,
-      destino,
-      ativo
+      titulo: titulo,
+      mensagem: mensagem,
+      destino: destino,
+      ativo: ativo,
+      timestamp: new Date()
     });
     
     mostrarNotificacao('✅ Aviso Atualizado', 'Aviso atualizado com sucesso!');
+    
     document.querySelector('.modal-back').remove();
+    carregarAvisosGestor();
     
   } catch (erro) {
     console.error('Erro ao atualizar aviso:', erro);
     alert('❌ Erro ao atualizar aviso');
-  } finally {
-    hideLoading();
-  }
-};
-
-window.toggleAviso = async function(avisoId, ativoAtual) {
-  try {
-    showLoading(ativoAtual ? 'Desativando aviso...' : 'Ativando aviso...');
-    
-    await updateAviso(avisoId, {
-      ativo: !ativoAtual
-    });
-    
-    mostrarNotificacao('✅ Aviso Atualizado', `Aviso ${ativoAtual ? 'desativado' : 'ativado'} com sucesso!`);
-    
-  } catch (erro) {
-    console.error('Erro ao alterar status do aviso:', erro);
-    alert('❌ Erro ao alterar status do aviso');
   } finally {
     hideLoading();
   }
@@ -727,6 +616,24 @@ window.excluirAviso = async function(avisoId) {
     
     mostrarNotificacao('✅ Aviso Excluído', 'Aviso excluído com sucesso!');
     
+    const avisoElement = document.getElementById(`aviso-${avisoId}`);
+    if (avisoElement) {
+      avisoElement.remove();
+    }
+    
+    if (document.querySelectorAll('.aviso-admin-item').length === 0) {
+      const container = document.getElementById('avisosAdminList');
+      if (container) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-bullhorn"></i>
+            <h4>Nenhum aviso cadastrado</h4>
+            <p>Clique em "Novo Aviso" para criar o primeiro.</p>
+          </div>
+        `;
+      }
+    }
+    
   } catch (erro) {
     console.error('Erro ao excluir aviso:', erro);
     alert('❌ Erro ao excluir aviso');
@@ -735,67 +642,106 @@ window.excluirAviso = async function(avisoId) {
   }
 };
 
-// ========== FEEDBACK ==========
-window.abrirFeedback = function() {
-  mostrarTela('tela-feedback');
-};
-
-window.enviarFeedback = async function() {
-  const tipo = document.getElementById('feedbackTipo').value;
-  const mensagem = document.getElementById('feedbackMensagem').value;
-  
-  if (!tipo || !mensagem) {
-    alert('Preencha todos os campos');
-    return;
-  }
-  
-  if (mensagem.length < 10) {
-    alert('A mensagem deve ter pelo menos 10 caracteres');
-    return;
-  }
-  
+// ========== ESTATÍSTICAS GESTOR ==========
+async function carregarEstatisticasGestor() {
   try {
-    showLoading('Enviando feedback...');
+    const estatisticas = await getEstatisticasDashboard();
+    estadoApp.estatisticas = estatisticas;
     
-    const dadosFeedback = {
-      tipo,
-      mensagem,
-      status: 'pendente'
-    };
+    // Atualizar cards do dashboard
+    const totalColaboradores = document.getElementById('totalColaboradores');
+    const avisosAtivosCount = document.getElementById('avisosAtivosCount');
+    const usuariosOnline = document.getElementById('usuariosOnline');
     
-    if (estadoApp.usuario) {
-      dadosFeedback.remetente = estadoApp.usuario.nome;
-      dadosFeedback.matricula = estadoApp.usuario.matricula;
-      dadosFeedback.perfil = 'usuario';
-    } else if (estadoApp.gestor) {
-      dadosFeedback.remetente = estadoApp.gestor.nome;
-      dadosFeedback.perfil = 'gestor';
-    }
+    if (totalColaboradores) totalColaboradores.textContent = estatisticas.totalColaboradores;
+    if (avisosAtivosCount) avisosAtivosCount.textContent = estatisticas.totalAvisosAtivos;
+    if (usuariosOnline) usuariosOnline.textContent = estatisticas.usuariosOnline;
     
-    await addFeedback(dadosFeedback);
+    // Atualizar estatísticas na aba de relatórios
+    const statColaboradores = document.getElementById('statColaboradores');
+    const statAvisos = document.getElementById('statAvisos');
     
-    document.getElementById('feedbackMensagem').value = '';
-    
-    if (estadoApp.usuario) {
-      mostrarTela('tela-usuario');
-    } else if (estadoApp.gestor) {
-      mostrarTela('tela-gestor-dashboard');
-    }
-    
-    mostrarNotificacao('✅ Feedback Enviado', 'Obrigado pelo seu feedback!');
+    if (statColaboradores) statColaboradores.textContent = estatisticas.totalColaboradores;
+    if (statAvisos) statAvisos.textContent = estatisticas.totalAvisosAtivos;
     
   } catch (erro) {
-    console.error('Erro ao enviar feedback:', erro);
-    alert('❌ Erro ao enviar feedback. Tente novamente.');
-  } finally {
-    hideLoading();
+    console.error('Erro ao carregar estatísticas:', erro);
   }
+}
+
+window.atualizarRelatorios = function() {
+  carregarEstatisticasGestor();
+  mostrarNotificacao('🔄 Atualizando', 'Estatísticas atualizadas');
+};
+
+window.exportarRelatorios = function() {
+  if (!estadoApp.estatisticas) {
+    alert('Nenhum dado disponível para exportar');
+    return;
+  }
+  
+  let csvContent = "Relatório Portal QSSMA\n";
+  csvContent += `Data: ${new Date().toLocaleDateString()}\n\n`;
+  csvContent += "Métrica,Valor\n";
+  csvContent += `Colaboradores Cadastrados,${estadoApp.estatisticas.totalColaboradores}\n`;
+  csvContent += `Avisos Ativos,${estadoApp.estatisticas.totalAvisosAtivos}\n`;
+  csvContent += `Usuários Online,${estadoApp.estatisticas.usuariosOnline}\n`;
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `relatorio_qssma_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  mostrarNotificacao('✅ Relatório Exportado', 'Download iniciado!');
+};
+
+// ========== WHATSAPP SUPPORT ==========
+window.abrirSuporteWhatsApp = function() {
+  const telefone = '559392059914';
+  const mensagem = encodeURIComponent('Olá! Preciso de suporte no Portal QSSMA.');
+  const url = `https://wa.me/${telefone}?text=${mensagem}`;
+  
+  window.open(url, '_blank', 'noopener,noreferrer');
 };
 
 // ========== NOTIFICAÇÕES ==========
 function mostrarNotificacao(titulo, mensagem) {
-  // Criar notificação na tela
+  if (!("Notification" in window)) {
+    console.log("Este navegador não suporta notificações desktop");
+    return;
+  }
+  
+  if (Notification.permission === "granted") {
+    criarNotificacao(titulo, mensagem);
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        criarNotificacao(titulo, mensagem);
+      }
+    });
+  }
+  
   criarNotificacaoTela(titulo, mensagem);
+}
+
+function criarNotificacao(titulo, mensagem) {
+  const notification = new Notification(titulo, {
+    body: mensagem,
+    icon: 'logo.jpg',
+    tag: 'portal-qssma'
+  });
+  
+  notification.onclick = function() {
+    window.focus();
+    this.close();
+  };
 }
 
 function criarNotificacaoTela(titulo, mensagem) {
@@ -811,7 +757,6 @@ function criarNotificacaoTela(titulo, mensagem) {
   
   document.body.appendChild(notificacao);
   
-  // Remover automaticamente após 5 segundos
   setTimeout(() => {
     if (notificacao.parentElement) {
       notificacao.remove();
@@ -833,67 +778,7 @@ function hideLoading() {
   if (overlay) overlay.style.display = 'none';
 }
 
-function initEventListeners() {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeAllModals();
-    }
-  });
-  
-  // Fechar modal ao clicar fora
-  document.querySelectorAll('.modal-back').forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.style.display = 'none';
-      }
-    });
-  });
-}
-
-function closeAllModals() {
-  document.querySelectorAll('.modal-back').forEach(modal => {
-    modal.style.display = 'none';
-  });
-}
-
-// ========== FUNÇÕES DE CONEXÃO ==========
-function initConnectionMonitor() {
-  window.addEventListener('online', updateOnlineStatus);
-  window.addEventListener('offline', updateOnlineStatus);
-  
-  updateOnlineStatus();
-}
-
-function updateOnlineStatus() {
-  estadoApp.isOnline = navigator.onLine;
-  const statusElement = document.getElementById('connectionStatus');
-  const offlineBanner = document.getElementById('offlineBanner');
-  
-  if (statusElement) {
-    statusElement.innerHTML = estadoApp.isOnline ? '<i class="fas fa-circle"></i>' : '<i class="fas fa-circle"></i>';
-    statusElement.style.color = estadoApp.isOnline ? '#4CAF50' : '#FF5722';
-    statusElement.title = estadoApp.isOnline ? 'Online' : 'Offline';
-  }
-  
-  if (offlineBanner) {
-    offlineBanner.style.display = estadoApp.isOnline ? 'none' : 'flex';
-  }
-  
-  if (!estadoApp.isOnline) {
-    console.warn('📶 Aplicativo offline');
-    mostrarNotificacao('📶 Modo Offline', 'Algumas funcionalidades podem não estar disponíveis');
-  }
-}
-
-// ========== AVISOS ==========
-function initAvisos() {
-  const avisosBtn = document.getElementById('avisosBtn');
-  if (avisosBtn) {
-    avisosBtn.addEventListener('click', mostrarAvisos);
-  }
-}
-
-// ========== FUNÇÕES DE TEMAS ==========
+// ========== FUNÇÕES DE TEMAS E PWA ==========
 function initDarkMode() {
   const darkToggle = document.getElementById('darkToggle');
   if (!darkToggle) return;
@@ -925,6 +810,14 @@ function toggleDarkMode() {
   const isDark = document.body.classList.toggle('dark');
   localStorage.setItem('qssma_dark', isDark ? '1' : '0');
   updateDarkModeIcon(isDark);
+  
+  const darkToggle = document.getElementById('darkToggle');
+  if (darkToggle) {
+    darkToggle.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      darkToggle.style.transform = '';
+    }, 150);
+  }
 }
 
 function updateDarkModeIcon(isDark) {
@@ -935,7 +828,6 @@ function updateDarkModeIcon(isDark) {
   darkToggle.setAttribute('title', isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro');
 }
 
-// ========== PWA ==========
 function initPWA() {
   const installBtn = document.getElementById('installBtn');
   if (!installBtn) return;
@@ -978,4 +870,69 @@ function initPWA() {
   }
 }
 
-console.log('🚀 Portal QSSMA carregado com sucesso!');
+// ========== FUNÇÕES DE CONEXÃO ==========
+function initConnectionMonitor() {
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  
+  updateOnlineStatus();
+}
+
+function updateOnlineStatus() {
+  estadoApp.isOnline = navigator.onLine;
+  const statusElement = document.getElementById('connectionStatus');
+  const offlineBanner = document.getElementById('offlineBanner');
+  
+  if (statusElement) {
+    statusElement.innerHTML = estadoApp.isOnline ? '<i class="fas fa-circle"></i>' : '<i class="fas fa-circle"></i>';
+    statusElement.style.color = estadoApp.isOnline ? '#4CAF50' : '#FF5722';
+    statusElement.title = estadoApp.isOnline ? 'Online' : 'Offline';
+  }
+  
+  if (offlineBanner) {
+    offlineBanner.style.display = estadoApp.isOnline ? 'none' : 'block';
+  }
+  
+  if (!estadoApp.isOnline) {
+    console.warn('📶 Aplicativo offline');
+    mostrarNotificacao('📶 Modo Offline', 'Algumas funcionalidades podem não estar disponíveis');
+  }
+}
+
+// ========== SERVICE WORKER ==========
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(registration => {
+        console.log('✅ ServiceWorker registrado:', registration.scope);
+      })
+      .catch(error => {
+        console.log('❌ Falha ao registrar ServiceWorker:', error);
+      });
+  });
+}
+
+// ========== EVENT LISTENERS ==========
+function initEventListeners() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeAllModals();
+    }
+  });
+  
+  document.querySelectorAll('.modal-back').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  });
+}
+
+function closeAllModals() {
+  document.querySelectorAll('.modal-back').forEach(modal => {
+    modal.remove();
+  });
+}
+
+console.log('🚀 app.js carregado com sucesso!');
