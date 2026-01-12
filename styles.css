@@ -385,8 +385,8 @@ header h1 small {
 }
 
 .avatar {
-  width: 70px;
-  height: 70px;
+  width: 150px;
+  height: 200px;
   border-radius: 50%;
   object-fit: cover;
   border: 4px solid var(--primary);
@@ -1769,8 +1769,8 @@ body.dark .card-icon {
 
 /* ========== AVATAR (MOBILE-FIRST) ========== */
 .avatar-large {
-  width: 70px;                    /* Ideal para mobile */
-  height: 70px;                   /* Ideal para mobile */
+  width: 150px;                    /* Ideal para mobile */
+  height: 200px;                   /* Ideal para mobile */
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--primary);
@@ -1780,8 +1780,8 @@ body.dark .card-icon {
 }
 
 .user-avatar-large {
-  width: 60px;                    /* Um pouco menor que o avatar de boas-vindas */
-  height: 60px;
+  width: 150px;                    /* Um pouco menor que o avatar de boas-vindas */
+  height: 200x;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   border-radius: 50%;
   display: flex;
