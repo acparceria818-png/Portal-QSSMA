@@ -1,31 +1,28 @@
-// firebase.js - CONFIGURAÇÃO DO SEU FIREBASE
+// firebase.js - VERSÃO SIMPLIFICADA E FUNCIONAL
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-
 import { 
   getFirestore, 
-  doc, 
-  getDoc, 
+  collection,
+  doc,
+  getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
-  collection,
-  onSnapshot,
+  addDoc,
   query,
   where,
-  getDocs,
-  addDoc,
-  serverTimestamp,
-  orderBy
+  orderBy,
+  onSnapshot,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
 import { 
-  getAuth, 
+  getAuth,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut 
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// ================= SUA CONFIGURAÇÃO FIREBASE =================
+// SUA CONFIGURAÇÃO DO FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyBdBJz8vNjr5LU2aP7aMymP2lf5rsosbwo",
   authDomain: "portal-qssma.firebaseapp.com",
@@ -35,112 +32,73 @@ const firebaseConfig = {
   appId: "1:267009799858:web:5c2155d34acd6cb0f13bab"
 };
 
-// ================= INICIALIZAÇÃO =================
+// INICIALIZAR FIREBASE
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// ================= FUNÇÕES DE AUTENTICAÇÃO =================
-async function loginEmailSenha(email, senha) {
+// FUNÇÕES DE BANCO DE DADOS
+async function buscarColaborador(matricula) {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, senha);
-    return userCredential.user;
-  } catch (error) {
-    console.error("Erro login:", error.code, error.message);
-    throw error;
-  }
-}
-
-// ================= FUNÇÕES DE COLABORADORES =================
-async function getColaborador(matricula) {
-  try {
-    // Converter matrícula para maiúsculas e remover espaços
-    const matriculaLimpa = matricula.trim().toUpperCase();
-    
-    console.log("🔍 Buscando colaborador com matrícula:", matriculaLimpa);
-    
-    // Primeiro, tentar buscar onde matrícula é o ID do documento
-    const docRef = doc(db, 'colaboradores', matriculaLimpa);
+    // Primeiro tenta como ID do documento
+    const docRef = doc(db, "colaboradores", matricula);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      console.log("✅ Colaborador encontrado por ID:", docSnap.data());
-      return { 
-        exists: true, 
-        data: docSnap.data(), 
-        id: docSnap.id 
-      };
+      return { success: true, data: docSnap.data(), id: docSnap.id };
     }
     
-    // Se não encontrou, buscar na coleção onde matrícula é um campo
+    // Se não encontrou, busca por campo matrícula
     const q = query(
-      collection(db, 'colaboradores'),
-      where("matricula", "==", matriculaLimpa)
+      collection(db, "colaboradores"),
+      where("matricula", "==", matricula)
     );
-    
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      console.log("✅ Colaborador encontrado por campo matrícula:", querySnapshot.docs[0].data());
-      return { 
-        exists: true, 
-        data: querySnapshot.docs[0].data(), 
-        id: querySnapshot.docs[0].id 
-      };
+      const doc = querySnapshot.docs[0];
+      return { success: true, data: doc.data(), id: doc.id };
     }
     
-    console.log("❌ Colaborador não encontrado");
-    return { exists: false };
+    return { success: false, message: "Matrícula não encontrada" };
     
   } catch (error) {
-    console.error("❌ Erro ao buscar colaborador:", error);
-    return { 
-      exists: false, 
-      error: "Erro de conexão. Tente novamente." 
-    };
+    console.error("Erro ao buscar colaborador:", error);
+    return { success: false, message: "Erro na conexão" };
   }
 }
 
-// ================= FUNÇÕES DE GESTORES =================
-async function getGestorByEmail(email) {
+async function buscarGestorPorEmail(email) {
   try {
-    const emailLimpo = email.trim().toLowerCase();
-    
-    console.log("🔍 Buscando gestor com email:", emailLimpo);
-    
-    // Buscar na coleção gestores
     const q = query(
-      collection(db, 'gestores'),
-      where("email", "==", emailLimpo),
+      collection(db, "gestores"),
+      where("email", "==", email),
       where("ativo", "==", true)
     );
-    
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-      console.log("✅ Gestor encontrado:", querySnapshot.docs[0].data());
-      return querySnapshot.docs[0];
+      const doc = querySnapshot.docs[0];
+      return { success: true, data: doc.data(), id: doc.id };
     }
     
-    console.log("❌ Gestor não encontrado na coleção");
-    return null;
+    return { success: false, message: "Gestor não encontrado" };
     
   } catch (error) {
-    console.error("❌ Erro ao buscar gestor:", error);
-    return null;
+    console.error("Erro ao buscar gestor:", error);
+    return { success: false, message: "Erro na conexão" };
   }
 }
 
-// ================= FUNÇÕES DE AVISOS =================
-async function getAvisosAtivos() {
+async function buscarAvisosAtivos() {
   try {
     const q = query(
-      collection(db, 'avisos'), 
+      collection(db, "avisos"),
       where("ativo", "==", true),
-      orderBy('timestamp', 'desc')
+      orderBy("timestamp", "desc")
     );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Erro ao buscar avisos:", error);
     return [];
@@ -149,190 +107,176 @@ async function getAvisosAtivos() {
 
 function monitorarAvisos(callback) {
   const q = query(
-    collection(db, 'avisos'), 
+    collection(db, "avisos"),
     where("ativo", "==", true),
-    orderBy('timestamp', 'desc')
+    orderBy("timestamp", "desc")
   );
   
   return onSnapshot(q, (snapshot) => {
-    const avisos = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    const avisos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(avisos);
-  }, (error) => {
-    console.error("Erro monitoramento avisos:", error);
   });
 }
 
-async function addAviso(dados) {
+async function criarAviso(dados) {
   try {
-    const docRef = await addDoc(collection(db, 'avisos'), {
+    const docRef = await addDoc(collection(db, "avisos"), {
       ...dados,
       timestamp: serverTimestamp()
     });
-    return docRef.id;
+    return { success: true, id: docRef.id };
   } catch (error) {
-    console.error("Erro ao adicionar aviso:", error);
-    throw error;
+    console.error("Erro ao criar aviso:", error);
+    return { success: false, message: error.message };
   }
 }
 
-async function updateAviso(avisoId, dados) {
+async function atualizarAviso(id, dados) {
   try {
-    const docRef = doc(db, 'avisos', avisoId);
+    const docRef = doc(db, "avisos", id);
     await updateDoc(docRef, {
       ...dados,
       atualizadoEm: serverTimestamp()
     });
-    return true;
+    return { success: true };
   } catch (error) {
     console.error("Erro ao atualizar aviso:", error);
-    throw error;
+    return { success: false, message: error.message };
   }
 }
 
-async function deleteAviso(avisoId) {
+async function excluirAviso(id) {
   try {
-    const docRef = doc(db, 'avisos', avisoId);
+    const docRef = doc(db, "avisos", id);
     await deleteDoc(docRef);
-    return true;
+    return { success: true };
   } catch (error) {
     console.error("Erro ao excluir aviso:", error);
-    throw error;
+    return { success: false, message: error.message };
   }
 }
 
-// ================= FUNÇÕES DE FEEDBACK =================
-async function addFeedback(dados) {
+async function criarFeedback(dados) {
   try {
-    const docRef = await addDoc(collection(db, 'feedbacks'), {
+    const docRef = await addDoc(collection(db, "feedbacks"), {
       ...dados,
       timestamp: serverTimestamp()
     });
-    return docRef.id;
+    return { success: true, id: docRef.id };
   } catch (error) {
-    console.error("Erro ao adicionar feedback:", error);
-    throw error;
+    console.error("Erro ao criar feedback:", error);
+    return { success: false, message: error.message };
   }
 }
 
-// ================= FUNÇÕES DE ESTATÍSTICAS =================
-async function getEstatisticas() {
-  try {
-    const [avisosSnapshot, colaboradoresSnapshot] = await Promise.all([
-      getDocs(collection(db, 'avisos')),
-      getDocs(collection(db, 'colaboradores'))
-    ]);
-
-    return {
-      totalAvisos: avisosSnapshot.size,
-      avisosAtivos: avisosSnapshot.docs.filter(doc => doc.data().ativo === true).length,
-      totalColaboradores: colaboradoresSnapshot.size,
-      colaboradoresAtivos: colaboradoresSnapshot.docs.filter(doc => doc.data().ativo !== false).length,
-    };
-  } catch (error) {
-    console.error("Erro ao buscar estatísticas:", error);
-    return {
-      totalAvisos: 0,
-      avisosAtivos: 0,
-      totalColaboradores: 0,
-      colaboradoresAtivos: 0
-    };
-  }
-}
-
-// ================= FUNÇÃO PARA CRIAR DADOS INICIAIS =================
 async function criarDadosIniciais() {
   try {
     console.log("🔧 Verificando dados iniciais...");
     
-    // Verificar se já existem gestores
-    const gestoresSnapshot = await getDocs(collection(db, 'gestores'));
-    
-    if (gestoresSnapshot.empty) {
-      console.log("📝 Criando gestor administrador padrão...");
-      
-      // Criar gestor admin padrão
-      await setDoc(doc(db, 'gestores', 'admin'), {
-        nome: "Administrador QSSMA",
-        email: "admin@qssma.com",
-        senha: "admin123", // Senha para referência (será usada no Auth também)
-        nivel: "admin",
-        ativo: true,
-        criadoEm: serverTimestamp()
-      });
-      
-      console.log("✅ Gestor admin criado: admin@qssma.com / admin123");
-    }
-    
-    // Verificar se já existem colaboradores de exemplo
-    const colaboradoresSnapshot = await getDocs(collection(db, 'colaboradores'));
+    // Verificar colaboradores
+    const colaboradoresSnapshot = await getDocs(collection(db, "colaboradores"));
     
     if (colaboradoresSnapshot.empty) {
       console.log("📝 Criando colaboradores de exemplo...");
       
-      // Criar alguns colaboradores de exemplo
-      const colaboradoresExemplo = [
+      const colaboradores = [
         {
           matricula: "QSSMA001",
           nome: "João da Silva",
           setor: "Segurança",
           funcao: "Técnico em Segurança",
-          ativo: true,
-          criadoEm: serverTimestamp()
+          ativo: true
         },
         {
           matricula: "QSSMA002",
           nome: "Maria Santos",
           setor: "Qualidade",
           funcao: "Analista de Qualidade",
-          ativo: true,
-          criadoEm: serverTimestamp()
+          ativo: true
         }
       ];
       
-      for (const colaborador of colaboradoresExemplo) {
-        await setDoc(doc(db, 'colaboradores', colaborador.matricula), colaborador);
+      for (const colaborador of colaboradores) {
+        await setDoc(doc(db, "colaboradores", colaborador.matricula), {
+          ...colaborador,
+          criadoEm: serverTimestamp()
+        });
       }
       
-      console.log("✅ Colaboradores de exemplo criados");
-      console.log("📋 Matrículas disponíveis: QSSMA001, QSSMA002");
+      console.log("✅ Colaboradores criados: QSSMA001, QSSMA002");
     }
     
-    console.log("🎉 Verificação de dados inicial concluída!");
+    // Verificar gestores
+    const gestoresSnapshot = await getDocs(collection(db, "gestores"));
+    
+    if (gestoresSnapshot.empty) {
+      console.log("📝 Criando gestor admin...");
+      
+      await setDoc(doc(db, "gestores", "admin"), {
+        nome: "Administrador QSSMA",
+        email: "admin@qssma.com",
+        nivel: "admin",
+        ativo: true,
+        criadoEm: serverTimestamp()
+      });
+      
+      console.log("✅ Gestor admin criado");
+    }
+    
+    // Verificar avisos
+    const avisosSnapshot = await getDocs(collection(db, "avisos"));
+    
+    if (avisosSnapshot.empty) {
+      console.log("📝 Criando aviso de exemplo...");
+      
+      await addDoc(collection(db, "avisos"), {
+        titulo: "Bem-vindo ao Portal QSSMA",
+        mensagem: "Este é o sistema de gestão de Qualidade, Segurança, Saúde e Meio Ambiente. Utilize os formulários para registrar eventos importantes.",
+        tipo: "informativo",
+        destino: "todos",
+        ativo: true,
+        criadoPor: "Sistema",
+        timestamp: serverTimestamp()
+      });
+      
+      console.log("✅ Aviso de exemplo criado");
+    }
+    
+    console.log("🎉 Dados iniciais verificados/criados!");
     
   } catch (error) {
     console.error("❌ Erro ao criar dados iniciais:", error);
   }
 }
 
-// ================= EXPORTAÇÕES =================
+// EXPORTAR TODAS AS FUNÇÕES
 export {
   db,
   auth,
+  collection,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
-  collection,
-  onSnapshot,
-  getDocs,
+  addDoc,
   query,
   where,
   orderBy,
+  onSnapshot,
   serverTimestamp,
   signInWithEmailAndPassword,
   signOut,
   
-  // Funções específicas
-  loginEmailSenha,
-  getColaborador,
-  getGestorByEmail,
-  getAvisosAtivos,
+  // Funções personalizadas
+  buscarColaborador,
+  buscarGestorPorEmail,
+  buscarAvisosAtivos,
   monitorarAvisos,
-  addAviso,
-  updateAviso,
-  deleteAviso,
-  addFeedback,
-  getEstatisticas,
+  criarAviso,
+  atualizarAviso,
+  excluirAviso,
+  criarFeedback,
   criarDadosIniciais
 };
