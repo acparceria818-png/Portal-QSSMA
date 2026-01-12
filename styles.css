@@ -1767,6 +1767,150 @@ body.dark .card-icon {
   }
 }
 
+/* ========== AVATAR (MOBILE-FIRST) ========== */
+.avatar-large {
+  width: 70px;                    /* Ideal para mobile */
+  height: 70px;                   /* Ideal para mobile */
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  margin: 15px auto;              /* Espaçamento reduzido */
+  display: block;
+}
+
+.user-avatar-large {
+  width: 60px;                    /* Um pouco menor que o avatar de boas-vindas */
+  height: 60px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;                /* Fonte proporcional ao tamanho */
+  color: var(--white);
+  margin: 0 auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ========== TELA DE BOAS-VINDAS ========== */
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 15px;                      /* Espaçamento reduzido */
+  padding: 20px 10px;             /* Padding reduzido */
+}
+
+.welcome-text h2 {
+  display: flex;
+  flex-direction: column;         /* Ícone e texto em coluna para mobile */
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+  font-size: 16px;                /* Fonte menor */
+}
+
+/* ========== USER HEADER (MOBILE) ========== */
+.user-header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  border-radius: 12px;            /* Bordas mais suaves */
+  padding: 15px;                  /* Padding reduzido */
+  margin-bottom: 15px;
+  color: var(--white);
+  text-align: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-info h2 {
+  font-size: 18px;                /* Título menor */
+  margin-bottom: 10px;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;         /* Coluna para mobile */
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.user-badge {
+  background: rgba(255, 255, 255, 0.15); /* Mais transparente */
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;                /* Fonte menor */
+  display: flex;
+  align-items: center;
+  justify-content: center;        /* Centralizado */
+  gap: 5px;
+  width: fit-content;
+  margin: 0 auto;                 /* Centraliza cada badge */
+}
+
+/* ========== RESPONSIVIDADE ========== */
+@media (min-width: 768px) {
+  /* Tablets - um pouco maior */
+  .avatar-large {
+    width: 90px;
+    height: 90px;
+    border-width: 4px;
+    margin: 20px auto;
+  }
+  
+  .user-avatar-large {
+    width: 80px;
+    height: 80px;
+    font-size: 36px;
+  }
+  
+  .welcome-content {
+    padding: 30px 15px;
+  }
+  
+  .welcome-text h2 {
+    font-size: 18px;
+  }
+  
+  .user-header {
+    padding: 20px;
+    border-radius: 15px;
+  }
+  
+  .user-info h2 {
+    font-size: 20px;
+  }
+  
+  .user-details {
+    flex-direction: row;          /* Linha em tablets/desktop */
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .user-badge {
+    margin: 0;                    /* Remove centralização individual */
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop - tamanho confortável */
+  .avatar-large {
+    width: 100px;
+    height: 100px;
+    margin: 25px auto;
+  }
+  
+  .user-avatar-large {
+    width: 90px;
+    height: 90px;
+    font-size: 40px;
+  }
+  
+  .welcome-text h2 {
+    font-size: 20px;
+  }
+}
+
 /* ========== PRINT STYLES ========== */
 @media print {
   .no-print,
