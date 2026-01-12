@@ -1,5 +1,5 @@
 // service-worker.js - VERSÃO CORRIGIDA
-const CACHE_NAME = 'portal-qssma-v2-' + new Date().getTime();
+const CACHE_NAME = 'portal-qssma-v3-' + new Date().getTime();
 const CORE_ASSETS = [
   './',
   './index.html',
