@@ -385,8 +385,8 @@ header h1 small {
 }
 
 .avatar {
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   object-fit: cover;
   border: 6px solid var(--primary);
