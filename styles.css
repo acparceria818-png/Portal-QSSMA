@@ -1773,7 +1773,6 @@ body.dark .card-icon {
   height: 200px;                   /* Ideal para mobile */
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--primary);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
   margin: 15px auto;              /* Espaçamento reduzido */
   display: block;
