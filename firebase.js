@@ -1,4 +1,4 @@
-// firebase.js - CONFIGURAÇÃO PORTAL QSSMA
+// firebase.js - VERSÃO COMPLETA CORRIGIDA
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { 
   getFirestore, 
@@ -19,10 +19,12 @@ import {
 import { 
   getAuth, 
   signInWithEmailAndPassword,
-  signOut 
+  signOut,
+  createUserWithEmailAndPassword,
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Configuração do seu Firebase QSSMA
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBdBJz8vNjr5LU2aP7aMymP2lf5rsosbwo",
   authDomain: "portal-qssma.firebaseapp.com",
@@ -48,37 +50,66 @@ async function loginEmailSenha(email, senha) {
   }
 }
 
+async function criarUsuario(email, senha, nome) {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+    await updateProfile(userCredential.user, {
+      displayName: nome
+    });
+    return userCredential.user;
+  } catch (error) {
+    throw new Error(getErrorMessage(error.code));
+  }
+}
+
 function getErrorMessage(errorCode) {
   const messages = {
     'auth/invalid-email': 'E-mail inválido',
     'auth/user-disabled': 'Usuário desativado',
     'auth/user-not-found': 'Usuário não encontrado',
     'auth/wrong-password': 'Senha incorreta',
-    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde'
+    'auth/email-already-in-use': 'E-mail já está em uso',
+    'auth/weak-password': 'Senha muito fraca',
+    'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde',
+    'auth/operation-not-allowed': 'Operação não permitida'
   };
   return messages[errorCode] || 'Erro ao fazer login';
 }
 
-// ================= COLABORADORES QSSMA =================
+// ================= COLABORADORES =================
 async function getColaborador(matricula) {
   const docRef = doc(db, 'colaboradores', matricula);
   return await getDoc(docRef);
 }
 
-async function getColaboradorByEmail(email) {
-  const q = query(
-    collection(db, 'colaboradores'),
-    where("email", "==", email)
-  );
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.empty ? null : querySnapshot.docs[0];
+async function getTodosColaboradores() {
+  const snapshot = await getDocs(collection(db, 'colaboradores'));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function criarColaborador(matricula, dados) {
+  const docRef = doc(db, 'colaboradores', matricula);
+  return await setDoc(docRef, {
+    ...dados,
+    criadoEm: serverTimestamp(),
+    ativo: true
+  });
+}
+
+async function atualizarColaborador(matricula, dados) {
+  const docRef = doc(db, 'colaboradores', matricula);
+  return await updateDoc(docRef, {
+    ...dados,
+    atualizadoEm: serverTimestamp()
+  });
 }
 
 // ================= AVISOS =================
 async function registrarAviso(dados) {
   return await addDoc(collection(db, 'avisos'), {
     ...dados,
-    timestamp: serverTimestamp()
+    timestamp: serverTimestamp(),
+    criadoPor: auth.currentUser?.email || 'Sistema'
   });
 }
 
@@ -92,7 +123,8 @@ async function updateAviso(avisoId, dados) {
   const docRef = doc(db, 'avisos', avisoId);
   return await updateDoc(docRef, {
     ...dados,
-    timestamp: serverTimestamp()
+    atualizadoEm: serverTimestamp(),
+    atualizadoPor: auth.currentUser?.email || 'Sistema'
   });
 }
 
@@ -103,25 +135,47 @@ async function deleteAviso(avisoId) {
 
 // ================= MONITORAMENTO =================
 function monitorarAvisos(callback) {
-  const q = query(collection(db, 'avisos'), where("ativo", "==", true));
+  const q = query(collection(db, 'avisos'), 
+    where("ativo", "==", true),
+    orderBy('timestamp', 'desc')
+  );
   return onSnapshot(q, snapshot => {
     const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     callback(dados);
   });
 }
 
-// ================= RELATÓRIOS =================
-async function getEstatisticasDashboard() {
-  const [avisosSnapshot, colaboradoresSnapshot] = await Promise.all([
-    getDocs(query(collection(db, 'avisos'), where('ativo', '==', true))),
-    getDocs(collection(db, 'colaboradores'))
-  ]);
+function monitorarColaboradores(callback) {
+  const q = query(collection(db, 'colaboradores'),
+    where("ativo", "==", true)
+  );
+  return onSnapshot(q, snapshot => {
+    const dados = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(dados);
+  });
+}
 
-  return {
-    totalAvisosAtivos: avisosSnapshot.docs.length,
-    totalColaboradores: colaboradoresSnapshot.docs.length,
-    usuariosOnline: 0 // Será implementado depois
-  };
+// ================= ESTATÍSTICAS =================
+async function getEstatisticasDashboard() {
+  try {
+    const [avisosSnapshot, colaboradoresSnapshot] = await Promise.all([
+      getDocs(query(collection(db, 'avisos'), where('ativo', '==', true))),
+      getDocs(query(collection(db, 'colaboradores'), where('ativo', '==', true)))
+    ]);
+
+    return {
+      totalAvisosAtivos: avisosSnapshot.docs.length,
+      totalColaboradores: colaboradoresSnapshot.docs.length,
+      usuariosOnline: 0 // Será implementado depois
+    };
+  } catch (error) {
+    console.error('Erro ao carregar estatísticas:', error);
+    return {
+      totalAvisosAtivos: 0,
+      totalColaboradores: 0,
+      usuariosOnline: 0
+    };
+  }
 }
 
 // ================= EXPORTAÇÕES =================
@@ -140,13 +194,28 @@ export {
   where,
   orderBy,
   serverTimestamp,
+  
+  // Autenticação
+  loginEmailSenha,
+  criarUsuario,
+  signOut,
+  
+  // Colaboradores
   getColaborador,
-  getColaboradorByEmail,
+  getTodosColaboradores,
+  criarColaborador,
+  atualizarColaborador,
+  
+  // Avisos
   registrarAviso,
   getAvisos,
   updateAviso,
   deleteAviso,
+  
+  // Monitoramento
   monitorarAvisos,
-  getEstatisticasDashboard,
-  loginEmailSenha
+  monitorarColaboradores,
+  
+  // Dashboard
+  getEstatisticasDashboard
 };
