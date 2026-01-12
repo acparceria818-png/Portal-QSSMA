@@ -1,44 +1,18 @@
 {
   "name": "Portal QSSMA",
   "short_name": "QSSMA",
-  "description": "Portal de Qualidade, Segurança, Saúde e Meio Ambiente",
+  "description": "Sistema de Gestão em Segurança QSSMA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#b00000",
   "orientation": "portrait",
-  "categories": ["business", "productivity", "safety"],
+  "categories": ["business", "productivity", "security"],
   "icons": [
-    { 
-      "src": "logo.jpg", 
-      "sizes": "192x192", 
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    },
-    { 
-      "src": "logo.jpg", 
-      "sizes": "512x512", 
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    }
+    { "src": "logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
   ],
   "permissions": [
     "notifications"
-  ],
-  "shortcuts": [
-    {
-      "name": "Informe de Evento",
-      "short_name": "Evento",
-      "description": "Registrar evento de segurança",
-      "url": "/?form=evento",
-      "icons": [{ "src": "logo.jpg", "sizes": "96x96" }]
-    },
-    {
-      "name": "Radar Móvel",
-      "short_name": "Radar",
-      "description": "Controle de velocidade",
-      "url": "/?form=radar",
-      "icons": [{ "src": "logo.jpg", "sizes": "96x96" }]
-    }
   ]
 }
