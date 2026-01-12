@@ -1,5 +1,5 @@
-// service-worker.js - PORTAL QSSMA
-const CACHE_NAME = 'portal-qssma-v1-' + new Date().getTime();
+// service-worker.js - VERSÃO CORRIGIDA
+const CACHE_NAME = 'portal-qssma-v2-' + new Date().getTime();
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -45,33 +45,96 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Ignorar requisições que não são GET
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  // Ignorar requisições do Firebase
+  const url = new URL(event.request.url);
+  if (url.hostname.includes('firebase') || 
+      url.hostname.includes('googleapis')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
+        // Retorna do cache se existir
         if (cachedResponse) {
           return cachedResponse;
         }
         
+        // Busca na rede
         return fetch(event.request)
-          .then(response => {
-            if (!response || response.status !== 200) {
-              return response;
+          .then(networkResponse => {
+            // Verifica se a resposta é válida
+            if (!networkResponse || networkResponse.status !== 200) {
+              return networkResponse;
             }
             
-            const responseToCache = response.clone();
+            // Clone a resposta para cache
+            const responseToCache = networkResponse.clone();
             
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
+            // Cache apenas para nossos arquivos
+            if (url.origin === self.location.origin) {
+              caches.open(CACHE_NAME)
+                .then(cache => {
+                  cache.put(event.request, responseToCache);
+                });
+            }
             
-            return response;
+            return networkResponse;
           })
-          .catch(() => {
+          .catch(error => {
+            console.log('🌐 Offline - Erro na rede:', error);
+            
+            // Se for navegação, retorna index.html
             if (event.request.mode === 'navigate') {
               return caches.match('./index.html');
             }
           });
+      })
+  );
+});
+
+self.addEventListener('push', event => {
+  console.log('📬 Push notification recebida');
+  
+  const options = {
+    body: 'Nova notificação do Portal QSSMA',
+    icon: './logo.jpg',
+    badge: './logo.jpg',
+    vibrate: [100, 50, 100],
+    data: {
+      url: './'
+    }
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification('Portal QSSMA', options)
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  console.log('👆 Notificação clicada');
+  
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window' })
+      .then(windowClients => {
+        // Focar em janela existente
+        for (let client of windowClients) {
+          if (client.url === './' && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        
+        // Abrir nova janela
+        if (clients.openWindow) {
+          return clients.openWindow('./');
+        }
       })
   );
 });
